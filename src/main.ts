@@ -1,62 +1,55 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for the web client. Configure origins in production via env.
-  // Configure CORS: in production set CORS_ORIGIN to a comma-separated list of allowed origins.
-  // Using `origin: true` reflects the request origin which is useful for multi-origin setups.
-  const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : undefined;
+  // ======= SIMPLE CORS =======
+  // Allow any origin (good for dev)
   app.enableCors({
-    origin: allowedOrigins ?? true,
+    origin: '*', // <- allow all origins for development
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
-    exposedHeaders: ['Authorization'],
     credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
   });
 
-  // Simple origin logger to help debug CORS issues (will log each request's origin)
-  app.use((req: any, _res: any, next: any) => {
-    try {
-      const origin = req.headers && (req.headers.origin || req.headers.host);
-      if (origin) console.debug('[CORS] request origin:', origin);
-    } catch (e) { }
-    next();
-  });
-
-  // Verbose request logger: prints method + url + origin for every request
-  app.use((req: any, _res: any, next: any) => {
-    try {
-      const origin = req.headers && (req.headers.origin || req.headers.host) || '-';
-      console.log(`[REQ] ${new Date().toISOString()} ${req.method} ${req.url} origin=${origin}`);
-    } catch (e) {
-      // ignore
+  // Optional: preflight handler (usually not needed if enableCors is used)
+  app.use((req: any, res: any, next: any) => {
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With');
+      return res.status(204).end();
     }
     next();
   });
 
-  // Security headers
+  // ======= LOGGING =======
+  app.use((req: any, _res: any, next: any) => {
+    const origin = req.headers && (req.headers.origin || req.headers.host) || '-';
+    console.log(`[REQ] ${new Date().toISOString()} ${req.method} ${req.url} origin=${origin}`);
+    next();
+  });
 
-
-  // Global validation pipe (will work once DTOs use class-validator)
+  // ======= VALIDATION PIPE =======
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false }));
 
-  const config = new DocumentBuilder()
-    .setTitle('Nest Concepts API')
-    .setDescription('API documentation for Nest Concepts')
-    .setVersion('1.0')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
-    .build();
+  // Swagger removed — API docs disabled in this build
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
-
-  await app.listen(process.env.PORT ?? 3000);
-
+  // ======= START SERVER =======
+  // Listen on 0.0.0.0 to accept connections from any interface (localhost, mobile, network)
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port, '0.0.0.0', () => {
+    console.log(`
+╔═══════════════════════════════════════════════════════════╗
+║         Server is running and accessible from:            ║
+╠═══════════════════════════════════════════════════════════╣
+║  📱 Mobile App (APK):  http://<your-machine-ip>:${port}    ║
+║  💻 Admin Panel (PC):  http://localhost:${port}            ║
+║                        http://127.0.0.1:${port}            ║
+╚═══════════════════════════════════════════════════════════╝
+    `);
+  });
 }
 bootstrap();

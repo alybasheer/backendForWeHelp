@@ -12,5 +12,15 @@ export class Signup {
     password: string;
     @Prop({ required: false, default: 'user' })
     role: string;
+    @Prop({
+        required: false,
+        type: {
+            latitude: { type: Number },
+            longitude: { type: Number },
+        },
+    })
+    location?: { latitude?: number; longitude?: number };
+    @Prop({ required: false })
+    googleId?: string; // Google OAuth ID for Google Sign-In users
 }
 export const SignupSchema = SchemaFactory.createForClass(Signup);

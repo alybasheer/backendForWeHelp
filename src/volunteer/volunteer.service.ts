@@ -1,11 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Volunteer, VolunteerDocument } from './volunteer.schema';
+import { VolunteerDocument } from './volunteer.schema';
 
 @Injectable()
 export class VolunteerService {
-    constructor(@InjectModel('Volunteer') private volunteerModel: Model<VolunteerDocument>) {}
+    constructor(
+        @InjectModel('Volunteer') private volunteerModel: Model<VolunteerDocument>,
+    ) { }
 
     async createApplication(userId: string, data: {
         name: string;
@@ -24,25 +26,8 @@ export class VolunteerService {
         return this.volunteerModel.find({ userId }).exec();
     }
 
-    async findAllPending() {
-        return this.volunteerModel.find({ status: 'pending' }).exec();
-    }
-
-    async findById(id: string) {
-        return this.volunteerModel.findById(id).exec();
-    }
-
-    async approve(id: string) {
-        const app = await this.findById(id);
-        if (!app) throw new NotFoundException('Application not found');
-        app.status = 'approved';
-        return app.save();
-    }
-
-    async reject(id: string) {
-        const app = await this.findById(id);
-        if (!app) throw new NotFoundException('Application not found');
-        app.status = 'rejected';
-        return app.save();
+    async findByUserId(userId: string) {
+        // Find the most recent volunteer application for the user
+        return this.volunteerModel.findOne({ userId }).sort({ createdAt: -1 }).exec();
     }
 }

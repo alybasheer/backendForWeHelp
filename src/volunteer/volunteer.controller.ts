@@ -1,18 +1,13 @@
-import { BadRequestException, Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Post } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AuthenticationService } from '../authentication/authentication.service';
 import { ApplyVolunteerDto } from './dto/apply-volunteer.dto';
 import { VolunteerService } from './volunteer.service';
 
-@ApiTags('volunteer')
-@ApiBearerAuth('access-token')
 @Controller('volunteer')
 export class VolunteerController {
     constructor(
         private readonly volunteerService: VolunteerService,
         private readonly jwtService: JwtService,
-        private readonly authService: AuthenticationService,
     ) { }
 
     private verifyTokenAndGetPayload(authHeader: string) {
@@ -23,7 +18,6 @@ export class VolunteerController {
     }
 
     @Post('apply')
-    @ApiOperation({ summary: 'Apply as a volunteer' })
     async apply(@Headers('authorization') auth: string, @Body() body: ApplyVolunteerDto) {
         const payload = this.verifyTokenAndGetPayload(auth);
         const userId = payload.sub;
@@ -32,35 +26,48 @@ export class VolunteerController {
         if (!name || !city || !location || !expertise || !reason || !cnic) {
             throw new BadRequestException('Missing required application fields');
         }
-        return this.volunteerService.createApplication(userId, { name, city, location, expertise, reason, image, cnic });
+        const application = await this.volunteerService.createApplication(userId, { name, city, location, expertise, reason, image, cnic });
+        return {
+            success: true,
+            message: 'Application submitted successfully',
+            data: application,
+        };
     }
 
-    @Get('my-applications')
+    @Get('my-application')
     async myApplications(@Headers('authorization') auth: string) {
         const payload = this.verifyTokenAndGetPayload(auth);
         const userId = payload.sub;
-        return this.volunteerService.findByUser(userId);
+        const applications = await this.volunteerService.findByUser(userId);
+        return {
+            success: true,
+            data: applications,
+        };
     }
 
-    // Admin endpoints
-    @Get('admin/applications')
-    async listPending(@Headers('authorization') auth: string) {
+    @Get('status')
+    async getVolunteerStatus(@Headers('authorization') auth: string) {
         const payload = this.verifyTokenAndGetPayload(auth);
-        if (payload.role !== 'admin') throw new BadRequestException('Admin credentials required');
-        return this.volunteerService.findAllPending();
-    }
+        const userId = payload.sub;
 
-    @Post('admin/:id/approve')
-    async approve(@Headers('authorization') auth: string, @Param('id') id: string) {
-        const payload = this.verifyTokenAndGetPayload(auth);
-        if (payload.role !== 'admin') throw new BadRequestException('Admin credentials required');
-        return this.volunteerService.approve(id);
-    }
+        // Find the volunteer verification record for this user
+        const verification = await this.volunteerService.findByUserId(userId);
 
-    @Post('admin/:id/reject')
-    async reject(@Headers('authorization') auth: string, @Param('id') id: string) {
-        const payload = this.verifyTokenAndGetPayload(auth);
-        if (payload.role !== 'admin') throw new BadRequestException('Admin credentials required');
-        return this.volunteerService.reject(id);
+        // If no record exists, return pending status
+        if (!verification) {
+            return {
+                status: 'success',
+                data: {
+                    status: 'pending',
+                    message: 'No application found. User can submit a new application.',
+                },
+            };
+        }
+
+        // Return the full verification record with status
+        return {
+            status: 'success',
+            data: verification,
+        };
     }
 }

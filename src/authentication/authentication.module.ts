@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
+import { FirebaseModule } from '../firebase/firebase.module';
 import { AuthenticationController } from './authentication.controller';
 import { AuthenticationService } from './authentication.service';
 import { SignupSchema } from './signup.schema';
@@ -12,6 +13,7 @@ import { SignupSchema } from './signup.schema';
             secret: process.env.JWT_SECRET ?? 'dev_secret_key',
             signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN ?? '1h') as any },
         }),
+        FirebaseModule,
     ],
     providers: [AuthenticationService],
     controllers: [AuthenticationController],
