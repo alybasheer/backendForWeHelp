@@ -82,12 +82,19 @@ export class AuthenticationService {
 
     /**
      * Update a user's last known location (latitude, longitude).
-     * We store it on the Signup document in `location` for quick retrieval.
+     * Converts the incoming lat/lng to GeoJSON Point format for
+     * MongoDB geospatial queries ($near).
+     *
+     * Frontend still sends { latitude, longitude } — conversion
+     * to GeoJSON { type:'Point', coordinates:[lng,lat] } happens here.
      */
     async updateLocationById(userId: string, latitude: number, longitude: number) {
         const user = await this.signupModel.findById(userId).exec();
         if (!user) throw new NotFoundException('User not found');
-        user.location = { latitude, longitude } as any;
+        user.location = {
+            type: 'Point',
+            coordinates: [longitude, latitude], // GeoJSON: [lng, lat]
+        } as any;
         return user.save();
     }
 

@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { SignupDocument } from '../authentication/signup.schema';
+import { HelpRequestDocument } from '../help-requests/help-request.schema';
 import { MessageDocument } from './chat.schema';
 
 @Injectable()
 export class ChatService {
     constructor(
         @InjectModel('Message') private messageModel: Model<MessageDocument>,
+        @InjectModel('Signup') private signupModel: Model<SignupDocument>,
+        @InjectModel('HelpRequest') private helpRequestModel: Model<HelpRequestDocument>,
     ) { }
 
     async saveMessage(senderId: string, receiverId: string, content: string) {
@@ -147,5 +151,62 @@ export class ChatService {
                 { senderId: otherUserObjectId, receiverId: userObjectId },
             ],
         });
+    }
+
+    async getCoordinationContacts(userId: string, role = 'user') {
+        if (role === 'volunteer') {
+            const acceptedRequests = await this.helpRequestModel
+                .find({ acceptedBy: new Types.ObjectId(userId), status: 'accepted' })
+                .populate('userId', 'username email role')
+                .exec();
+
+            const requestees = acceptedRequests
+                .map((request: any) => request.userId)
+                .filter(Boolean)
+                .map((user: any) => ({
+                    _id: user._id,
+                    username: user.username,
+                    email: user.email,
+                    role: user.role,
+                    contactType: 'requestee',
+                }));
+
+            const volunteers = await this.signupModel
+                .find({ role: 'volunteer', _id: { $ne: new Types.ObjectId(userId) } })
+                .select('_id username email role')
+                .exec();
+
+            return {
+                requestees,
+                volunteers: volunteers.map((user: any) => ({
+                    _id: user._id,
+                    username: user.username,
+                    email: user.email,
+                    role: user.role,
+                    contactType: 'volunteer',
+                })),
+            };
+        }
+
+        const acceptedRequests = await this.helpRequestModel
+            .find({ userId: new Types.ObjectId(userId), status: 'accepted' })
+            .populate('acceptedBy', 'username email role')
+            .exec();
+
+        const volunteers = acceptedRequests
+            .map((request: any) => request.acceptedBy)
+            .filter(Boolean)
+            .map((user: any) => ({
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                contactType: 'acceptedVolunteer',
+            }));
+
+        return {
+            requestees: [],
+            volunteers,
+        };
     }
 }

@@ -80,6 +80,23 @@ export class ChatController {
         };
     }
 
+    @Get('coordination/contacts')
+    async getCoordinationContacts(@Headers('authorization') auth: string) {
+        const payload = this.verifyTokenAndGetPayload(auth);
+        const userId = payload.sub;
+        const role = payload.role ?? 'user';
+        const contacts = await this.chatService.getCoordinationContacts(userId, role);
+
+        return {
+            success: true,
+            data: {
+                userId,
+                role,
+                ...contacts,
+            },
+        };
+    }
+
     @Get('mark-read/:senderId')
     async markAsRead(@Headers('authorization') auth: string, @Param('senderId') senderId: string) {
         const payload = this.verifyTokenAndGetPayload(auth);

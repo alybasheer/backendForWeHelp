@@ -35,18 +35,17 @@ async function bootstrap() {
   // ======= VALIDATION PIPE =======
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false }));
 
-  // Swagger removed — API docs disabled in this build
 
   // ======= START SERVER =======
   // Listen on 0.0.0.0 to accept connections from any interface (localhost, mobile, network)
   const port = process.env.PORT ?? 3000;
   await app.listen(port, '0.0.0.0', () => {
     console.log(`
-╔═══════════════════════════════════════════════════════════╗
+╔═══════════════════════════════════════════════════════════- 
 ║         Server is running and accessible from:            ║
 ╠═══════════════════════════════════════════════════════════╣
-║  📱 Mobile App (APK):  http://<your-machine-ip>:${port}    ║
-║  💻 Admin Panel (PC):  http://localhost:${port}            ║
+║   Mobile App (APK):  http://<your-machine-ip>:${port}    ║
+║   Admin Panel (PC):  http://localhost:${port}            ║
 ║                        http://127.0.0.1:${port}            ║
 ╚═══════════════════════════════════════════════════════════╝
     `);

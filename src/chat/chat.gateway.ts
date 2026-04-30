@@ -7,8 +7,9 @@ import {
     OnGatewayInit,
     SubscribeMessage,
     WebSocketGateway,
+    WebSocketServer,
 } from '@nestjs/websockets';
-import { Socket } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 
 interface AuthSocket extends Socket {
@@ -24,6 +25,9 @@ interface AuthSocket extends Socket {
     },
 })
 export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+    @WebSocketServer()
+    server: Server;
+
     private connectedUsers = new Map<string, string>(); // Map of userId -> socketId
 
     constructor(
@@ -157,5 +161,44 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
                 isTyping: data.isTyping,
             });
         }
+    }
+
+    // ──────────────────────────────────────────────
+    // PUBLIC API — called by other modules
+    // ──────────────────────────────────────────────
+
+    /**
+     * Send an event to a list of specific users (by their userId).
+     * Only users who are currently connected via WebSocket will receive it.
+     *
+     * Used by HelpRequestsService to notify nearby volunteers of new requests.
+     */
+    notifyUsers(userIds: string[], event: string, data: any) {
+        let notified = 0;
+        for (const userId of userIds) {
+            const socketId = this.connectedUsers.get(userId);
+            if (socketId) {
+                this.server.to(socketId).emit(event, data);
+                notified++;
+            }
+        }
+        console.log(`📢 [${event}] Notified ${notified}/${userIds.length} users`);
+        return notified;
+    }
+
+    /** Send an event to every currently connected socket. */
+    broadcast(event: string, data: any) {
+        this.server.emit(event, data);
+        return this.connectedUsers.size;
+    }
+
+    /** Check if a specific user is currently connected. */
+    isUserOnline(userId: string): boolean {
+        return this.connectedUsers.has(userId);
+    }
+
+    /** Get the list of all currently connected user IDs. */
+    getConnectedUserIds(): string[] {
+        return Array.from(this.connectedUsers.keys());
     }
 }

@@ -1,0 +1,34 @@
+Backend flow additions summary
+
+Added support for:
+- Nearby online volunteers for requestees.
+- SOS help requests using only title and coordinates.
+- Active/my ongoing help requests.
+- Volunteer accepting and releasing/resolving help requests.
+- Rating a volunteer after a resolved request.
+- Alerts that both requestees and volunteers can create and view.
+- Communities for volunteers, including create, join, start, delete, and group messages.
+- Map users endpoint to show requestees and volunteers with different icons.
+- Coordination contacts so requestees only chat with the volunteer who accepted their request, while volunteers can chat with other volunteers and active requestees.
+
+Important backend adjustment:
+- Frontend still sends latitude and longitude normally.
+- Backend stores user location as GeoJSON for MongoDB nearby search.
+
+Main new routes:
+- POST /help-requests/sos
+- GET /help-requests/my/active
+- GET /help-requests/nearby-volunteers
+- PATCH /help-requests/:id/release
+- POST /help-requests/:id/rating
+- GET /chat/coordination/contacts
+- GET /alerts
+- POST /alerts
+- GET /communities
+- POST /communities
+- POST /communities/:id/join
+- GET /map/users
+
+Checks completed:
+- TypeScript compile passed.
+- Jest tests passed.
