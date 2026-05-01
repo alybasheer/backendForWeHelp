@@ -4,51 +4,46 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const corsOrigin = process.env.CORS_ORIGIN?.trim();
+  const allowAnyOrigin = !corsOrigin || corsOrigin === '*';
+  const allowedOrigins = allowAnyOrigin
+    ? true
+    : corsOrigin
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
 
-  // ======= SIMPLE CORS =======
-  // Allow any origin (good for dev)
   app.enableCors({
-    origin: '*', // <- allow all origins for development
+    origin: allowedOrigins,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
-    credentials: true,
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-Requested-With',
+    ],
+    credentials: !allowAnyOrigin,
   });
 
-  // Optional: preflight handler (usually not needed if enableCors is used)
-  app.use((req: any, res: any, next: any) => {
-    if (req.method === 'OPTIONS') {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With');
-      return res.status(204).end();
-    }
-    next();
-  });
-
-  // ======= LOGGING =======
   app.use((req: any, _res: any, next: any) => {
-    const origin = req.headers && (req.headers.origin || req.headers.host) || '-';
-    console.log(`[REQ] ${new Date().toISOString()} ${req.method} ${req.url} origin=${origin}`);
+    const origin =
+      (req.headers && (req.headers.origin || req.headers.host)) || '-';
+    console.log(
+      `[REQ] ${new Date().toISOString()} ${req.method} ${req.url} origin=${origin}`,
+    );
     next();
   });
 
-  // ======= VALIDATION PIPE =======
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false }));
+  app.useGlobalPipes(
+    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false }),
+  );
 
-
-  // ======= START SERVER =======
-  // Listen on 0.0.0.0 to accept connections from any interface (localhost, mobile, network)
-  const port = process.env.PORT ?? 3000;
-  await app.listen(port, '0.0.0.0', () => {
-    console.log(`
-╔═══════════════════════════════════════════════════════════- 
-║         Server is running and accessible from:            ║
-╠═══════════════════════════════════════════════════════════╣
-║   Mobile App (APK):  http://<your-machine-ip>:${port}    ║
-║   Admin Panel (PC):  http://localhost:${port}            ║
-║                        http://127.0.0.1:${port}            ║
-╚═══════════════════════════════════════════════════════════╝
-    `);
-  });
+  const port = Number(process.env.PORT) || 3000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Server is running on http://0.0.0.0:${port}`);
 }
-bootstrap();
+
+bootstrap().catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});

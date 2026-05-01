@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import { AdminModule } from './admin/admin.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { AppController } from './app.controller';
@@ -17,15 +18,43 @@ import { VolunteerModule } from './volunteer/volunteer.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
-    MongooseModule.forRoot(process.env.MONGODB_URL!),
+    ConfigModule.forRoot({ isGlobal: true }),
+    MongooseModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const uri = configService.get<string>('MONGODB_URL');
+
+        if (!uri) {
+          throw new Error(
+            'MONGODB_URL is not set. Add it to the Render service environment variables.',
+          );
+        }
+
+        return {
+          uri,
+          lazyConnection: true,
+          serverSelectionTimeoutMS: 10000,
+          connectTimeoutMS: 10000,
+          connectionFactory: (connection: Connection) => {
+            connection.on('connected', () => console.log('MongoDB connected'));
+            connection.on('disconnected', () =>
+              console.warn('MongoDB disconnected'),
+            );
+            connection.on('error', (error) =>
+              console.error('MongoDB connection error:', error.message),
+            );
+            return connection;
+          },
+        };
+      },
+    }),
     UserModule,
     HelpsModule,
     AuthenticationModule,
     VolunteerModule,
     AdminModule,
     ChatModule,
-    
+
     HelpRequestsModule,
     AlertsModule,
     CommunitiesModule,
@@ -34,4 +63,4 @@ import { VolunteerModule } from './volunteer/volunteer.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}
