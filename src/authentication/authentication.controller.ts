@@ -78,23 +78,23 @@ export class AuthenticationController {
      * 
      * Body: { idToken, username }
      */
-    @Post('google-login')
-    async loginWithGoogle(@Body() body: { idToken: string; username: string }) {
-        if (!body.idToken) {
-            throw new BadRequestException('idToken is required');
-        }
+    // @Post('google-login')
+    // async loginWithGoogle(@Body() body: { idToken: string; username: string }) {
+    //     if (!body.idToken) {
+    //         throw new BadRequestException('idToken is required');
+    //     }
 
-        try {
-            const result = await this.authService.loginWithGoogle(body.idToken, body.username);
+    //     try {
+    //         const result = await this.authService.loginWithGoogle(body.idToken, body.username);
 
-            return {
-                success: true,
-                access_token: result.access_token,
-                user: result.user,
-            };
-        } catch (error) {
-            throw new UnauthorizedException('Google login failed: ' + error.message);
-        }
-    }
+    //         return {
+    //             success: true,
+    //             access_token: result.access_token,
+    //             user: result.user,
+    //         };
+    //     } catch (error) {
+    //         throw new UnauthorizedException('Google login failed: ' + error.message);
+    //     }
+    // }
 
 }

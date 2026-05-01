@@ -8,7 +8,7 @@ import { AppService } from './app.service';
 import { AuthenticationModule } from './authentication/authentication.module';
 import { ChatModule } from './chat/chat.module';
 import { CommunitiesModule } from './communities/communities.module';
-import { FirebaseModule } from './firebase/firebase.module';
+
 import { HelpRequestsModule } from './help-requests/help-requests.module';
 import { HelpsModule } from './helps/helps.module';
 import { MapModule } from './map/map.module';
@@ -25,7 +25,7 @@ import { VolunteerModule } from './volunteer/volunteer.module';
     VolunteerModule,
     AdminModule,
     ChatModule,
-    FirebaseModule,
+    
     HelpRequestsModule,
     AlertsModule,
     CommunitiesModule,
