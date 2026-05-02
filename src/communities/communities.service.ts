@@ -42,7 +42,7 @@ export class CommunitiesService {
         const query: any = {};
 
         if (filters.category) query.category = filters.category;
-        if (filters.status) query.status = filters.status;
+        query.status = filters.status ?? { $ne: 'cancelled' };
 
         if (filters.latitude !== undefined && filters.longitude !== undefined) {
             query.location = {
@@ -76,6 +76,7 @@ export class CommunitiesService {
             .exec();
 
         if (!community) throw new NotFoundException('Community not found');
+        if (community.status === 'cancelled') throw new NotFoundException('Community not found');
         return community;
     }
 
@@ -106,8 +107,9 @@ export class CommunitiesService {
         if (!community) throw new NotFoundException('Community not found');
         this.ensureOwnerOrAdmin(community.createdBy.toString(), userId, role);
 
+        community.status = 'cancelled';
+        await community.save();
         await this.communityMessageModel.deleteMany({ communityId: community._id });
-        await community.deleteOne();
         return { deleted: true };
     }
 
@@ -124,11 +126,22 @@ export class CommunitiesService {
     async sendMessage(id: string, userId: string, role: string, dto: SendCommunityMessageDto) {
         await this.ensureParticipant(id, userId, role);
 
-        return new this.communityMessageModel({
+        const message = await new this.communityMessageModel({
             communityId: new Types.ObjectId(id),
             senderId: new Types.ObjectId(userId),
             content: dto.content,
         }).save();
+
+        const communityStillActive = await this.communityModel
+            .exists({ _id: new Types.ObjectId(id), status: { $ne: 'cancelled' } })
+            .exec();
+
+        if (!communityStillActive) {
+            await message.deleteOne();
+            throw new NotFoundException('Community not found');
+        }
+
+        return message;
     }
 
     private ensureOwnerOrAdmin(ownerId: string, userId: string, role: string) {
@@ -140,6 +153,7 @@ export class CommunitiesService {
     private async ensureParticipant(id: string, userId: string, role: string) {
         const community = await this.communityModel.findById(id).exec();
         if (!community) throw new NotFoundException('Community not found');
+        if (community.status === 'cancelled') throw new NotFoundException('Community not found');
 
         const isCreator = community.createdBy.toString() === userId;
         const isMember = community.members.some((memberId) => memberId.toString() === userId);

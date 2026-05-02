@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { getModelToken } from '@nestjs/mongoose';
-import { FirebaseService } from '../firebase/firebase.service';
 import { AuthenticationService } from './authentication.service';
 
 describe('AuthenticationService', () => {
@@ -18,10 +17,6 @@ describe('AuthenticationService', () => {
         {
           provide: JwtService,
           useValue: { sign: jest.fn(), verify: jest.fn() },
-        },
-        {
-          provide: FirebaseService,
-          useValue: {},
         },
       ],
     }).compile();

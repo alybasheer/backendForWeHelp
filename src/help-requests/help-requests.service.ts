@@ -267,9 +267,24 @@ export class HelpRequestsService {
             throw new BadRequestException('You cannot accept your own request');
         }
 
-        request.status = 'accepted';
-        request.acceptedBy = new Types.ObjectId(volunteerId);
-        const saved = await request.save();
+        const saved = await this.helpRequestModel
+            .findOneAndUpdate(
+                { _id: new Types.ObjectId(requestId), status: 'open' },
+                {
+                    $set: {
+                        status: 'accepted',
+                        acceptedBy: new Types.ObjectId(volunteerId),
+                    },
+                },
+                { new: true },
+            )
+            .populate('userId', 'username email')
+            .populate('acceptedBy', 'username email role')
+            .exec();
+
+        if (!saved) {
+            throw new BadRequestException('This request is no longer open');
+        }
 
         this.chatGateway.notifyUsers([request.userId._id.toString()], 'help_request_accepted', {
             requestId: saved._id,
@@ -297,8 +312,19 @@ export class HelpRequestsService {
             throw new BadRequestException('Only the requester or accepting volunteer can resolve this request');
         }
 
-        request.status = 'resolved';
-        const saved = await request.save();
+        const saved = await this.helpRequestModel
+            .findOneAndUpdate(
+                { _id: new Types.ObjectId(requestId), status: { $ne: 'resolved' } },
+                { $set: { status: 'resolved' } },
+                { new: true },
+            )
+            .populate('userId', 'username email')
+            .populate('acceptedBy', 'username email role')
+            .exec();
+
+        if (!saved) {
+            throw new BadRequestException('This request is already resolved');
+        }
 
         if (isAcceptor) {
             this.chatGateway.notifyUsers([request.userId._id.toString()], 'help_request_resolved', {
