@@ -154,6 +154,26 @@ export class ChatService {
     }
 
     async getCoordinationContacts(userId: string, role = 'user') {
+        const myAcceptedRequests = await this.helpRequestModel
+            .find({ userId: new Types.ObjectId(userId), status: 'accepted' })
+            .populate('acceptedBy', 'username email role')
+            .exec();
+
+        const acceptedVolunteers = myAcceptedRequests
+            .map((request: any) => ({
+                requestId: request._id,
+                user: request.acceptedBy,
+            }))
+            .filter((item: any) => item.user)
+            .map((item: any) => ({
+                _id: item.user._id,
+                username: item.user.username,
+                email: item.user.email,
+                role: item.user.role,
+                requestId: item.requestId,
+                contactType: 'acceptedVolunteer',
+            }));
+
         if (role === 'volunteer') {
             const acceptedRequests = await this.helpRequestModel
                 .find({ acceptedBy: new Types.ObjectId(userId), status: 'accepted' })
@@ -176,37 +196,30 @@ export class ChatService {
                 .select('_id username email role')
                 .exec();
 
-            return {
-                requestees,
-                volunteers: volunteers.map((user: any) => ({
+            const volunteerContacts: any[] = [...acceptedVolunteers];
+            for (const user of volunteers as any[]) {
+                const alreadyAdded = volunteerContacts.some(
+                    (contact: any) => contact._id.toString() === user._id.toString(),
+                );
+                if (alreadyAdded) continue;
+                volunteerContacts.push({
                     _id: user._id,
                     username: user.username,
                     email: user.email,
                     role: user.role,
                     contactType: 'volunteer',
-                })),
+                });
+            }
+
+            return {
+                requestees,
+                volunteers: volunteerContacts,
             };
         }
 
-        const acceptedRequests = await this.helpRequestModel
-            .find({ userId: new Types.ObjectId(userId), status: 'accepted' })
-            .populate('acceptedBy', 'username email role')
-            .exec();
-
-        const volunteers = acceptedRequests
-            .map((request: any) => request.acceptedBy)
-            .filter(Boolean)
-            .map((user: any) => ({
-                _id: user._id,
-                username: user.username,
-                email: user.email,
-                role: user.role,
-                contactType: 'acceptedVolunteer',
-            }));
-
         return {
             requestees: [],
-            volunteers,
+            volunteers: acceptedVolunteers,
         };
     }
 }
