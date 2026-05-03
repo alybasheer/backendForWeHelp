@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RatingsModule } from '../ratings/ratings.module';
 import { VolunteerSchema } from '../volunteer/volunteer.schema';
 import { HelpRequestSchema } from './help-request.schema';
+import { HelpRequestMediaService } from './help-request-media.service';
 import { HelpRequestsController } from './help-requests.controller';
 import { HelpRequestsService } from './help-requests.service';
 
@@ -21,7 +22,7 @@ import { HelpRequestsService } from './help-requests.service';
         ChatModule,           // for real-time notifications via ChatGateway
         RatingsModule,
     ],
-    providers: [HelpRequestsService, JwtAuthGuard],
+    providers: [HelpRequestsService, HelpRequestMediaService, JwtAuthGuard],
     controllers: [HelpRequestsController],
     exports: [HelpRequestsService],
 })

@@ -23,6 +23,9 @@ export class HelpRequest {
     @Prop({ required: false })
     image?: string;
 
+    @Prop({ type: [String], default: [] })
+    mediaUrls: string[];
+
     @Prop({ required: false })
     locationName?: string;
 

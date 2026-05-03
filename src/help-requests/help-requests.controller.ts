@@ -8,23 +8,51 @@ import {
     Post,
     Query,
     Req,
+    Res,
+    UploadedFiles,
     UseGuards,
+    UseInterceptors,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RateHelpRequestDto } from '../ratings/dto/rate-help-request.dto';
 import { CreateHelpRequestDto } from './dto/create-help-request.dto';
 import { CreateSosRequestDto } from './dto/create-sos-request.dto';
+import { HelpRequestMediaService } from './help-request-media.service';
 import { HelpRequestsService } from './help-requests.service';
 
 @Controller('help-requests')
 @UseGuards(JwtAuthGuard)
 export class HelpRequestsController {
-    constructor(private readonly helpRequestsService: HelpRequestsService) { }
+    constructor(
+        private readonly helpRequestsService: HelpRequestsService,
+        private readonly mediaService: HelpRequestMediaService,
+    ) {}
 
     // ──────────────────────────────────────────────
     // POST /help-requests
     // Create a new help request
     // ──────────────────────────────────────────────
+
+    @Post('media')
+    @UseInterceptors(
+        FilesInterceptor('files', 2, {
+            limits: { files: 2, fileSize: 5 * 1024 * 1024 },
+        }),
+    )
+    async uploadMedia(@UploadedFiles() files: any[], @Req() req: any) {
+        const mediaUrls = await this.mediaService.upload(
+            files,
+            this.resolveBaseUrl(req),
+        );
+
+        return {
+            success: true,
+            message: 'Request photos uploaded',
+            data: { mediaUrls },
+        };
+    }
 
     @Post()
     async create(@Req() req: any, @Body() dto: CreateHelpRequestDto) {
@@ -167,6 +195,15 @@ export class HelpRequestsController {
     // Single request details
     // ──────────────────────────────────────────────
 
+    @Get('media/:id')
+    async getMedia(@Param('id') id: string, @Res() res: Response) {
+        const media = await this.mediaService.openDownloadStream(id);
+
+        res.setHeader('Content-Type', media.contentType);
+        res.setHeader('Cache-Control', 'private, max-age=86400');
+        media.stream.pipe(res);
+    }
+
     @Get(':id')
     async findOne(@Param('id') id: string) {
         const request = await this.helpRequestsService.getRequestById(id);
@@ -232,5 +269,16 @@ export class HelpRequestsController {
             message: 'Volunteer rated',
             data: result,
         };
+    }
+
+    private resolveBaseUrl(req: any) {
+        const configuredBaseUrl = process.env.PUBLIC_BASE_URL?.trim();
+        if (configuredBaseUrl) {
+            return configuredBaseUrl.replace(/\/$/, '');
+        }
+
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+        const host = req.headers['x-forwarded-host'] || req.headers.host;
+        return `${protocol}://${host}`;
     }
 }

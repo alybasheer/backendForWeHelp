@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+    IsArray,
+    IsNotEmpty,
+    IsNumber,
+    IsOptional,
+    IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateHelpRequestDto {
@@ -21,6 +27,11 @@ export class CreateHelpRequestDto {
     @IsOptional()
     @IsString()
     image?: string;
+
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    mediaUrls?: string[];
 
     @IsOptional()
     @IsString()
