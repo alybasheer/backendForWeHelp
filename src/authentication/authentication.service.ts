@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcryptjs';
@@ -28,18 +28,38 @@ export class AuthenticationService {
     }
 
     async create(data: { username: string; email: string; password: string }) {
+        const username = data.username.trim();
+        const email = data.email.trim().toLowerCase();
+
+        if (!username || !email || !data.password) {
+            throw new BadRequestException('username, email and password are required');
+        }
+
         // if creating admin via env credentials, just return token for admin
-        if (data.email === ADMIN_EMAIL && data.password === ADMIN_PASSWORD) {
+        if (email === ADMIN_EMAIL.trim().toLowerCase() && data.password === ADMIN_PASSWORD) {
             const admin = { _id: 'admin-id', email: ADMIN_EMAIL, username: 'admin', role: 'admin' };
             const token = this.signUserToken(admin);
             return { user: admin, access_token: token };
         }
 
+        const existingUser = await this.signupModel.findOne({ email }).select('_id').exec();
+        if (existingUser) {
+            throw new ConflictException('Email already registered. Please log in or use a different email.');
+        }
+
         const hashed = await bcrypt.hash(data.password, 10);
-        const created = new this.signupModel({ ...data, password: hashed, role: 'user' });
-        const saved = await created.save();
-        const token = this.signUserToken(saved);
-        return { user: saved, access_token: token };
+        const created = new this.signupModel({ username, email, password: hashed, role: 'user' });
+
+        try {
+            const saved = await created.save();
+            const token = this.signUserToken(saved);
+            return { user: saved, access_token: token };
+        } catch (error) {
+            if (error?.code === 11000) {
+                throw new ConflictException('Email already registered. Please log in or use a different email.');
+            }
+            throw error;
+        }
     }
 
     async findAll() {
@@ -47,18 +67,20 @@ export class AuthenticationService {
     }
 
     async findByEmail(email: string) {
-        return this.signupModel.findOne({ email }).exec();
+        return this.signupModel.findOne({ email: email.trim().toLowerCase() }).exec();
     }
 
     async validateUser(email: string, password: string) {
+        const normalizedEmail = email.trim().toLowerCase();
+
         // admin shortcut
-        if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+        if (normalizedEmail === ADMIN_EMAIL.trim().toLowerCase() && password === ADMIN_PASSWORD) {
             const admin = { _id: 'admin-id', email: ADMIN_EMAIL, username: 'admin', role: 'admin' };
             const token = this.signUserToken(admin);
             return { user: admin, access_token: token };
         }
 
-        const user = await this.findByEmail(email);
+        const user = await this.findByEmail(normalizedEmail);
         if (!user) return null;
         const match = await bcrypt.compare(password, user.password);
         if (!match) return null;
