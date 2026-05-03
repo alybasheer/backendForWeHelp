@@ -111,9 +111,11 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             // Confirm delivery to sender
             socket.emit('message_sent', {
                 _id: message._id,
-                receiverId,
-                content,
+                senderId: message.senderId,
+                receiverId: message.receiverId,
+                content: message.content,
                 timestamp: message.timestamp,
+                isRead: message.isRead,
                 status: receiverSocketId ? 'delivered' : 'saved',
             });
         } catch (error) {
