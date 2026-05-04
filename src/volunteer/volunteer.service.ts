@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { AuthenticationService } from '../authentication/authentication.service';
 import { VolunteerDocument } from './volunteer.schema';
 
 @Injectable()
 export class VolunteerService {
     constructor(
         @InjectModel('Volunteer') private volunteerModel: Model<VolunteerDocument>,
+        private readonly authService: AuthenticationService,
     ) { }
 
     async createApplication(userId: string, data: {
@@ -15,11 +17,17 @@ export class VolunteerService {
         location: string;
         expertise: string;
         reason: string;
-        image?: string;
         cnic: string;
+        cnicFrontImage: string;
+        cnicBackImage: string;
+        profileImage?: string;
     }) {
         const created = new this.volunteerModel({ userId, ...data, status: 'pending' });
-        return created.save();
+        const saved = await created.save();
+        if (data.profileImage) {
+            await this.authService.updateProfileImageById(userId, data.profileImage);
+        }
+        return saved;
     }
 
     async findByUser(userId: string) {

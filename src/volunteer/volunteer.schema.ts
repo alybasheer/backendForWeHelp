@@ -23,11 +23,17 @@ export class Volunteer {
     @Prop({ required: true })
     reason: string;
 
-    @Prop({ required: false })
-    image: string;
-
     @Prop({ required: true })
     cnic: string;
+
+    @Prop({ required: true })
+    cnicFrontImage: string;
+
+    @Prop({ required: true })
+    cnicBackImage: string;
+
+    @Prop({ required: false })
+    profileImage?: string;
 
     @Prop({ required: true, default: 'pending' })
     status: string; // pending | approved | rejected

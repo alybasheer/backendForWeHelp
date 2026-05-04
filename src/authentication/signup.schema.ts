@@ -21,6 +21,8 @@ export class Signup {
     password: string;
     @Prop({ required: false, default: 'user' })
     role: string;
+    @Prop({ required: false })
+    profileImage?: string;
     /**
      * Frontend sends latitude/longitude, backend stores GeoJSON so MongoDB
      * can run nearby volunteer and map queries with a 2dsphere index.

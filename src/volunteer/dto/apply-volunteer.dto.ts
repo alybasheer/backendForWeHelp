@@ -21,11 +21,19 @@ export class ApplyVolunteerDto {
     @IsNotEmpty()
     reason: string;
 
-    @IsOptional()
-    @IsString()
-    image?: string;
-
     @IsString()
     @IsNotEmpty()
     cnic: string;
+
+    @IsString()
+    @IsNotEmpty()
+    cnicFrontImage: string;
+
+    @IsString()
+    @IsNotEmpty()
+    cnicBackImage: string;
+
+    @IsOptional()
+    @IsString()
+    profileImage?: string;
 }
