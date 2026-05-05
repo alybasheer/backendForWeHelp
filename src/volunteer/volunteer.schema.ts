@@ -5,38 +5,44 @@ export type VolunteerDocument = Volunteer & Document;
 
 @Schema({ timestamps: true })
 export class Volunteer {
-    @Prop({ type: Types.ObjectId, ref: 'Signup', required: true })
-    userId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Signup', required: true })
+  userId: Types.ObjectId;
 
-    @Prop({ required: true })
-    name: string;
+  @Prop({ required: true })
+  name: string;
 
-    @Prop({ required: true })
-    city: string;
+  @Prop({ required: true })
+  city: string;
 
-    @Prop({ required: true })
-    location: string;
+  @Prop({ required: true })
+  location: string;
 
-    @Prop({ required: true })
-    expertise: string;
+  @Prop({ required: true })
+  expertise: string;
 
-    @Prop({ required: true })
-    reason: string;
+  @Prop({ required: true })
+  reason: string;
 
-    @Prop({ required: true })
-    cnic: string;
+  @Prop({ required: true })
+  cnic: string;
 
-    @Prop({ required: true })
-    cnicFrontImage: string;
+  @Prop({ required: true })
+  cnicFrontImage: string;
 
-    @Prop({ required: true })
-    cnicBackImage: string;
+  @Prop({ required: true })
+  cnicBackImage: string;
 
-    @Prop({ required: false })
-    profileImage?: string;
+  @Prop({ required: false })
+  profileImage?: string;
 
-    @Prop({ required: true, default: 'pending' })
-    status: string; // pending | approved | rejected
+  @Prop({ required: false })
+  latitude?: number;
+
+  @Prop({ required: false })
+  longitude?: number;
+
+  @Prop({ required: true, default: 'pending' })
+  status: string; // pending | approved | rejected
 }
 
 export const VolunteerSchema = SchemaFactory.createForClass(Volunteer);
