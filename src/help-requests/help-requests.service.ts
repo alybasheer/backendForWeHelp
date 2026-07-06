@@ -217,12 +217,14 @@ export class HelpRequestsService {
             .exec();
     }
 
+
     async getVolunteerCompletedRequestsCount(volunteerId: string) {
         return this.helpRequestModel.countDocuments({
             acceptedBy: new Types.ObjectId(volunteerId),
             status: 'resolved',
         });
     }
+
 
     private async enrichVolunteers(volunteers: SignupDocument[]) {
         const ids = volunteers.map((volunteer: any) => volunteer._id.toString());
