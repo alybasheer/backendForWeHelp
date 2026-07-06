@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcryptjs';
 import { Model } from 'mongoose';
 
+import { FirebaseService } from '../firebase/firebase.service';
 import { SignupDocument } from './signup.schema';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@example.com';
@@ -14,7 +15,7 @@ export class AuthenticationService {
     constructor(
         @InjectModel('Signup') private signupModel: Model<SignupDocument>,
         private readonly jwtService: JwtService,
-        
+        private readonly firebaseService: FirebaseService,
     ) { }
 
     private signUserToken(user: any) {
@@ -127,43 +128,32 @@ export class AuthenticationService {
         return user.save();
     }
 
-    /**
-     * Google OAuth Login with Firebase Token Verification
-     * 
-     * @param idToken - Firebase ID token from Google Sign-In
-     * @param username - Username provided by frontend
-     * @returns { user, access_token }
-     */
-    // async loginWithGoogle(idToken: string, username: string) {
-    //     try {
-    //         // Verify the Google token with Firebase
-    //         const googleUser = await this.firebaseService.verifyGoogleToken(idToken);
+    async loginWithGoogle(idToken: string, username?: string) {
+        try {
+            const googleUser = await this.firebaseService.verifyGoogleToken(idToken);
 
-    //         if (!googleUser.email) {
-    //             throw new BadRequestException('Email not found in Google token');
-    //         }
+            if (!googleUser.email) {
+                throw new BadRequestException('Email not found in Google token');
+            }
 
-    //         // Check if user exists in database
-    //         let user = await this.findByEmail(googleUser.email);
+            let user = await this.findByEmail(googleUser.email);
 
-    //         if (!user) {
-    //             // Create new user with Google OAuth
-    //             const created = new this.signupModel({
-    //                 username: username || googleUser.name || googleUser.email.split('@')[0],
-    //                 email: googleUser.email,
-    //                 password: 'google-oauth-' + googleUser.uid, // Placeholder
-    //                 role: 'user',
-    //                 googleId: googleUser.uid,
-    //             });
-    //             user = await created.save();
-    //         }
+            if (!user) {
+                const created = new this.signupModel({
+                    username: username || googleUser.name || googleUser.email.split('@')[0],
+                    email: googleUser.email,
+                    password: 'google-oauth-' + googleUser.uid,
+                    role: 'user',
+                    googleId: googleUser.uid,
+                });
+                user = await created.save();
+            }
 
-    //         // Generate JWT token for app
-    //         const token = this.signUserToken(user);
-    //         return { user, access_token: token };
-    //     } catch (error) {
-    //         throw new BadRequestException(`Google login failed: ${error.message}`);
-    //     }
-    // }
+            const token = this.signUserToken(user);
+            return { user, access_token: token };
+        } catch (error) {
+            throw new BadRequestException(`Google login failed: ${error.message}`);
+        }
+    }
 }
 
