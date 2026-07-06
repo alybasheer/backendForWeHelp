@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ChatGateway } from '../chat/chat.gateway';
-import { AlertDocument } from './alert.schema';
+import { AlertDocument } from './dto/alert.schema';
 import { CreateAlertDto } from './dto/create-alert.dto';
 
 const DEFAULT_ALERT_TTL_HOURS = 6;

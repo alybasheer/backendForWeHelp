@@ -64,37 +64,23 @@ export class AuthenticationController {
         return this.authService.updateLocationById(userId, body.latitude, body.longitude);
     }
 
-    /**
-     * POST /authentication/google-login
-     * Google OAuth Login endpoint with Firebase verification
-     * 
-     * Frontend flow:
-     * 1. User clicks "Login with Google"
-     * 2. Firebase/Google Sign-In handles authentication
-     * 3. Get idToken from Firebase SDK
-     * 4. Send idToken + username to this endpoint
-     * 5. Backend verifies with Firebase Admin SDK
-     * 6. Return access_token for app
-     * 
-     * Body: { idToken, username }
-     */
-    // @Post('google-login')
-    // async loginWithGoogle(@Body() body: { idToken: string; username: string }) {
-    //     if (!body.idToken) {
-    //         throw new BadRequestException('idToken is required');
-    //     }
+    @Post('google-login')
+    async loginWithGoogle(@Body() body: { idToken: string; username: string }) {
+        if (!body.idToken) {
+            throw new BadRequestException('idToken is required');
+        }
 
-    //     try {
-    //         const result = await this.authService.loginWithGoogle(body.idToken, body.username);
+        try {
+            const result = await this.authService.loginWithGoogle(body.idToken, body.username);
 
-    //         return {
-    //             success: true,
-    //             access_token: result.access_token,
-    //             user: result.user,
-    //         };
-    //     } catch (error) {
-    //         throw new UnauthorizedException('Google login failed: ' + error.message);
-    //     }
-    // }
+            return {
+                success: true,
+                access_token: result.access_token,
+                user: result.user,
+            };
+        } catch (error) {
+            throw new UnauthorizedException('Google login failed: ' + error.message);
+        }
+    }
 
 }

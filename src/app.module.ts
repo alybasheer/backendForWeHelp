@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
+import { FirebaseModule } from './firebase/firebase.module';
 import { AdminModule } from './admin/admin.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { AppController } from './app.controller';
@@ -51,6 +52,7 @@ import { VolunteerModule } from './volunteer/volunteer.module';
         };
       },
     }),
+    FirebaseModule,
     AuthenticationModule,
     VolunteerModule,
     AdminModule,
