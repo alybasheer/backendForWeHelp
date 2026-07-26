@@ -1,4 +1,5 @@
 import { JwtService } from '@nestjs/jwt';
+import { InjectModel } from '@nestjs/mongoose';
 import {
     ConnectedSocket,
     MessageBody,
@@ -9,7 +10,9 @@ import {
     WebSocketGateway,
     WebSocketServer,
 } from '@nestjs/websockets';
+import { Model } from 'mongoose';
 import { Server, Socket } from 'socket.io';
+import { HelpRequestDocument } from '../help-requests/help-request.schema';
 import { ChatService } from './chat.service';
 
 interface AuthSocket extends Socket {
@@ -33,6 +36,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     constructor(
         private chatService: ChatService,
         private jwtService: JwtService,
+        @InjectModel('HelpRequest') private helpRequestModel: Model<HelpRequestDocument>,
     ) { }
 
     afterInit(server: any) {
@@ -163,6 +167,78 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
                 isTyping: data.isTyping,
             });
         }
+    }
+
+    @SubscribeMessage('update_location')
+    async handleUpdateLocation(
+        @ConnectedSocket() socket: AuthSocket,
+        @MessageBody() data: { latitude: number; longitude: number; requestId: string },
+    ) {
+        const volunteerId = socket.userId;
+        if (!volunteerId || !data.latitude || !data.longitude || !data.requestId) return;
+
+        try {
+            const request = await this.helpRequestModel.findById(data.requestId).exec();
+            if (!request || !request.userId) return;
+
+            const seekerId = request.userId.toString();
+            const seekerSocketId = this.connectedUsers.get(seekerId);
+            if (seekerSocketId) {
+                this.server.to(seekerSocketId).emit('volunteer_location', {
+                    volunteerId,
+                    latitude: data.latitude,
+                    longitude: data.longitude,
+                    requestId: data.requestId,
+                    timestamp: new Date().toISOString(),
+                });
+            }
+        } catch { }
+    }
+
+    @SubscribeMessage('start_tracking')
+    async handleStartTracking(
+        @ConnectedSocket() socket: AuthSocket,
+        @MessageBody() data: { requestId: string },
+    ) {
+        const volunteerId = socket.userId;
+        if (!volunteerId || !data.requestId) return;
+        try {
+            const request = await this.helpRequestModel.findById(data.requestId).exec();
+            if (!request || !request.userId) return;
+            const seekerId = request.userId.toString();
+            const seekerSocketId = this.connectedUsers.get(seekerId);
+            if (seekerSocketId) {
+                this.server.to(seekerSocketId).emit('tracking_status', {
+                    volunteerId,
+                    requestId: data.requestId,
+                    status: 'en_route',
+                    timestamp: new Date().toISOString(),
+                });
+            }
+        } catch { }
+    }
+
+    @SubscribeMessage('stop_tracking')
+    async handleStopTracking(
+        @ConnectedSocket() socket: AuthSocket,
+        @MessageBody() data: { requestId: string },
+    ) {
+        const volunteerId = socket.userId;
+        if (!volunteerId || !data.requestId) return;
+        try {
+            const request = await this.helpRequestModel.findById(data.requestId).exec();
+            if (!request || !request.userId) return;
+            const seekerId = request.userId.toString();
+            const seekerSocketId = this.connectedUsers.get(seekerId);
+            if (seekerSocketId) {
+                this.server.to(seekerSocketId).emit('tracking_status', {
+                    volunteerId,
+                    requestId: data.requestId,
+                    status: 'arrived',
+                    timestamp: new Date().toISOString(),
+                });
+            }
+        } catch { }
     }
 
     // ──────────────────────────────────────────────

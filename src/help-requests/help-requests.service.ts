@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { SignupDocument } from '../authentication/signup.schema';
 import { ChatGateway } from '../chat/chat.gateway';
+import { RoutingService } from '../common/services/routing.service';
 import { RateHelpRequestDto } from '../ratings/dto/rate-help-request.dto';
 import { RatingsService } from '../ratings/ratings.service';
 import { VolunteerDocument } from '../volunteer/volunteer.schema';
@@ -24,6 +25,7 @@ export class HelpRequestsService {
         @InjectModel('Volunteer') private volunteerModel: Model<VolunteerDocument>,
         private readonly chatGateway: ChatGateway,
         private readonly ratingsService: RatingsService,
+        private readonly routingService: RoutingService,
     ) {}
 
     // ──────────────────────────────────────────────
@@ -109,7 +111,7 @@ export class HelpRequestsService {
 
     /**
      * Find verified volunteers within `radiusKm` of a given point.
-     * Uses MongoDB 2dsphere + $near geospatial query.
+     * Uses MongoDB $geoNear aggregation to include distance in results.
      */
     async findNearbyVolunteers(
         longitude: number,
@@ -118,32 +120,41 @@ export class HelpRequestsService {
         excludeUserId?: string,
         onlineOnly = false,
     ) {
-        const query: any = {
+        const geoNearQuery: any = {
             role: 'volunteer',
             'location.type': 'Point',
-            location: {
-                $near: {
-                    $geometry: {
-                        type: 'Point',
-                        coordinates: [longitude, latitude],
-                    },
-                    $maxDistance: radiusKm * 1000, // metres
-                },
-            },
         };
 
-        // Exclude the help seeker from the volunteer list
         if (excludeUserId && Types.ObjectId.isValid(excludeUserId)) {
-            query._id = { $ne: new Types.ObjectId(excludeUserId) };
+            geoNearQuery._id = { $ne: new Types.ObjectId(excludeUserId) };
         }
 
-        const volunteers = await this.signupModel
-            .find(query)
-            .select('_id username email role location')
-            .exec();
+        const pipeline = [
+            {
+                $geoNear: {
+                    near: { type: 'Point', coordinates: [longitude, latitude] },
+                    distanceField: 'distanceMeters',
+                    maxDistance: radiusKm * 1000,
+                    spherical: true,
+                    query: geoNearQuery,
+                },
+            },
+            {
+                $addFields: {
+                    distanceKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 1] },
+                },
+            },
+            {
+                $project: {
+                    _id: 1, username: 1, email: 1, role: 1, location: 1, distanceKm: 1,
+                },
+            },
+        ];
 
-        const enriched = await this.enrichVolunteers(volunteers);
-        return onlineOnly ? enriched.filter((volunteer: any) => volunteer.isOnline) : enriched;
+        const volunteers = await this.signupModel.aggregate(pipeline as any).exec();
+        const enriched: any[] = await this.enrichVolunteers(volunteers as any);
+        const withRoad = await this.enrichWithRoadDistance(enriched, latitude, longitude);
+        return onlineOnly ? withRoad.filter((v: any) => v.isOnline) : withRoad;
     }
 
     async getNearbyOnlineVolunteers(longitude: number, latitude: number, radiusKm: number = NEARBY_RADIUS_KM) {
@@ -168,21 +179,61 @@ export class HelpRequestsService {
         latitude: number,
         radiusKm: number = NEARBY_RADIUS_KM,
     ) {
-        return this.helpRequestModel
-            .find({
-                status: 'open',
-                location: {
-                    $near: {
-                        $geometry: {
-                            type: 'Point',
-                            coordinates: [longitude, latitude],
-                        },
-                        $maxDistance: radiusKm * 1000,
-                    },
+        const pipeline = [
+            {
+                $geoNear: {
+                    near: { type: 'Point', coordinates: [longitude, latitude] },
+                    distanceField: 'distanceMeters',
+                    maxDistance: radiusKm * 1000,
+                    spherical: true,
+                    query: { status: 'open' },
                 },
-            })
-            .populate('userId', 'username email')
-            .exec();
+            },
+            {
+                $lookup: {
+                    from: 'signups',
+                    localField: 'userId',
+                    foreignField: '_id',
+                    as: 'userId',
+                },
+            },
+            { $unwind: { path: '$userId', preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    distanceKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 1] },
+                },
+            },
+            {
+                $project: {
+                    _id: 1, title: 1, category: 1, subCategory: 1, description: 1,
+                    image: 1, mediaUrls: 1, locationName: 1, location: 1,
+                    isSos: 1, status: 1, expiresAt: 1, createdAt: 1, updatedAt: 1, distanceKm: 1,
+                    userId: { _id: 1, username: 1, email: 1 },
+                },
+            },
+        ];
+
+        const requests = await this.helpRequestModel.aggregate(pipeline as any).exec();
+        const origin = { latitude, longitude };
+        const withLocation = requests.filter((r: any) => r.location?.coordinates);
+        if (withLocation.length === 0) return requests;
+
+        const destinations = withLocation.map((r: any) => ({
+            latitude: r.location.coordinates[1],
+            longitude: r.location.coordinates[0],
+        }));
+
+        const roadResults = await this.routingService.getDistanceMatrix(origin, destinations);
+
+        let idx = 0;
+        return requests.map((req: any) => {
+            if (!req.location?.coordinates) return req;
+            const road = roadResults[idx++];
+            if (road && 'distanceKm' in road && road.distanceKm > 0) {
+                return { ...req, roadDistanceKm: road.distanceKm, roadDurationMinutes: road.durationMinutes };
+            }
+            return { ...req, roadDistanceKm: null, roadDurationMinutes: null };
+        });
     }
 
     /** Get a single help request by ID. */
@@ -225,6 +276,52 @@ export class HelpRequestsService {
         });
     }
 
+    async getRouteToRequest(requestId: string, volunteerId: string) {
+        const request = await this.getRequestById(requestId);
+        const volunteer = await this.signupModel.findById(volunteerId).exec();
+        if (!volunteer || !volunteer.location) {
+            throw new NotFoundException('Volunteer location not found');
+        }
+        const origin = {
+            latitude: volunteer.location.coordinates[1],
+            longitude: volunteer.location.coordinates[0],
+        };
+        const destination = {
+            latitude: request.location.coordinates[1],
+            longitude: request.location.coordinates[0],
+        };
+        const route = await this.routingService.getRoute(origin, destination);
+        return { route, requestId, volunteerId };
+    }
+
+    private async enrichWithRoadDistance(volunteers: any[], latitude: number, longitude: number) {
+        if (volunteers.length === 0) return volunteers;
+
+        const origin = { latitude, longitude };
+        const destinations = volunteers.map((v: any) => ({
+            latitude: v.location.coordinates[1],
+            longitude: v.location.coordinates[0],
+        }));
+
+        const roadResults = await this.routingService.getDistanceMatrix(origin, destinations);
+
+        return volunteers.map((volunteer: any, idx: number) => {
+            const road = roadResults[idx];
+            if (road && 'distanceKm' in road && road.distanceKm > 0) {
+                return {
+                    ...volunteer,
+                    distanceKm: road.distanceKm,
+                    roadDistanceKm: road.distanceKm,
+                    roadDurationMinutes: road.durationMinutes,
+                };
+            }
+            return {
+                ...volunteer,
+                roadDistanceKm: null,
+                roadDurationMinutes: null,
+            };
+        });
+    }
 
     private async enrichVolunteers(volunteers: SignupDocument[]) {
         const ids = volunteers.map((volunteer: any) => volunteer._id.toString());
@@ -252,6 +349,7 @@ export class HelpRequestsService {
                 email: volunteer.email,
                 role: volunteer.role,
                 location: volunteer.location,
+                distanceKm: volunteer.distanceKm ?? null,
                 expertise: expertiseByUser.get(id) ?? '',
                 ratingAverage: rating.ratingAverage,
                 ratingCount: rating.ratingCount,

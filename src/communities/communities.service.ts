@@ -39,33 +39,79 @@ export class CommunitiesService {
         longitude?: number;
         radiusKm?: number;
     }) {
-        const query: any = {};
+        if (filters.latitude !== undefined && filters.longitude !== undefined) {
+            const geoNearQuery: any = {};
+            if (filters.category) geoNearQuery.category = filters.category;
+            geoNearQuery.status = filters.status ?? { $ne: 'cancelled' };
 
+            const pipeline = [
+                {
+                    $geoNear: {
+                        near: { type: 'Point', coordinates: [filters.longitude, filters.latitude] },
+                        distanceField: 'distanceMeters',
+                        maxDistance: (filters.radiusKm ?? DEFAULT_COMMUNITY_RADIUS_KM) * 1000,
+                        spherical: true,
+                        query: geoNearQuery,
+                    },
+                },
+                {
+                    $lookup: {
+                        from: 'signups',
+                        localField: 'createdBy',
+                        foreignField: '_id',
+                        as: 'createdBy',
+                    },
+                },
+                { $unwind: { path: '$createdBy', preserveNullAndEmptyArrays: true } },
+                {
+                    $lookup: {
+                        from: 'signups',
+                        localField: 'members',
+                        foreignField: '_id',
+                        as: 'members',
+                    },
+                },
+                {
+                    $addFields: {
+                        distanceKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 1] },
+                        members: {
+                            $map: {
+                                input: '$members',
+                                as: 'member',
+                                in: {
+                                    _id: '$$member._id',
+                                    username: '$$member.username',
+                                    email: '$$member.email',
+                                    role: '$$member.role',
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    $project: {
+                        _id: 1, title: 1, details: 1, category: 1, timeNeeded: 1,
+                        locationName: 1, location: 1, peopleRequired: 1, status: 1,
+                        createdAt: 1, updatedAt: 1, distanceKm: 1,
+                        createdBy: { _id: 1, username: 1, email: 1, role: 1 },
+                        members: 1,
+                    },
+                },
+            ];
+
+            return this.communityModel.aggregate(pipeline as any).exec();
+        }
+
+        const query: any = {};
         if (filters.category) query.category = filters.category;
         query.status = filters.status ?? { $ne: 'cancelled' };
 
-        if (filters.latitude !== undefined && filters.longitude !== undefined) {
-            query.location = {
-                $near: {
-                    $geometry: {
-                        type: 'Point',
-                        coordinates: [filters.longitude, filters.latitude],
-                    },
-                    $maxDistance: (filters.radiusKm ?? DEFAULT_COMMUNITY_RADIUS_KM) * 1000,
-                },
-            };
-        }
-
-        const request = this.communityModel
+        return this.communityModel
             .find(query)
+            .sort({ createdAt: -1 })
             .populate('createdBy', 'username email role')
-            .populate('members', 'username email role');
-
-        if (!query.location) {
-            request.sort({ createdAt: -1 });
-        }
-
-        return request.exec();
+            .populate('members', 'username email role')
+            .exec();
     }
 
     async findById(id: string) {

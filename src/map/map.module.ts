@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AuthenticationModule } from '../authentication/authentication.module';
 import { SignupSchema } from '../authentication/signup.schema';
 import { ChatModule } from '../chat/chat.module';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RoutingService } from '../common/services/routing.service';
 import { MapController } from './map.controller';
 import { MapService } from './map.service';
 
@@ -14,6 +14,6 @@ import { MapService } from './map.service';
         ChatModule,
     ],
     controllers: [MapController],
-    providers: [MapService, JwtAuthGuard],
+    providers: [MapService, RoutingService],
 })
 export class MapModule {}

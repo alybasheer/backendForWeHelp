@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 import { FirebaseModule } from '../firebase/firebase.module';
 import { AuthenticationController } from './authentication.controller';
@@ -16,8 +17,8 @@ import { SignupSchema } from './signup.schema';
         }),
         FirebaseModule,
     ],
-    providers: [AuthenticationService],
+    providers: [AuthenticationService, JwtAuthGuard],
     controllers: [AuthenticationController],
-    exports: [AuthenticationService, JwtModule],
+    exports: [AuthenticationService, JwtModule, JwtAuthGuard],
 })
 export class AuthenticationModule { }

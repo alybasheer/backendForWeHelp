@@ -1,20 +1,18 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const corsOrigin = process.env.CORS_ORIGIN?.trim();
-  const allowAnyOrigin = !corsOrigin || corsOrigin === '*';
-  const allowedOrigins = allowAnyOrigin
-    ? true
-    : corsOrigin
-        .split(',')
-        .map((origin) => origin.trim())
-        .filter(Boolean);
+  const isCorsWildcard = !corsOrigin || corsOrigin === '*';
+
+  app.useStaticAssets(join(__dirname, '..', 'public'));
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: isCorsWildcard ? true : corsOrigin.split(',').map(s => s.trim()).filter(Boolean),
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
@@ -22,25 +20,23 @@ async function bootstrap() {
       'Accept',
       'X-Requested-With',
     ],
-    credentials: !allowAnyOrigin,
+    credentials: !isCorsWildcard,
   });
 
-  app.use((req: any, _res: any, next: any) => {
-    const origin =
-      (req.headers && (req.headers.origin || req.headers.host)) || '-';
-    console.log(
-      `[REQ] ${new Date().toISOString()} ${req.method} ${req.url} origin=${origin}`,
-    );
-    next();
-  });
+  // Use NestJS built-in logger for requests
+  const logger = new Logger('HTTP');
+  app.use((req, res, next) => {
+    res.on('finish', () => {
+      logger.log(`${req.method} ${req.originalUrl} ${res.statusCode}`);
+    });
+    next()
+  })
 
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false }),
-  );
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 
   const port = Number(process.env.PORT) || 3000;
-  await app.listen(port, '0.0.0.0');
-  console.log(`Server is running on http://0.0.0.0:${port}`);
+  await app.listen(port, '127.0.0.1');
+  console.log(`Server is running on http://localhost:${port}`);
 }
 
 bootstrap().catch((error) => {

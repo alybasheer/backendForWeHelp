@@ -42,28 +42,47 @@ export class AlertsService {
     }
 
     async getActiveAlerts(latitude?: number, longitude?: number, radiusKm = DEFAULT_ALERT_RADIUS_KM) {
-        const query: any = {
-            expiresAt: { $gt: new Date() },
-        };
-
         if (latitude !== undefined && longitude !== undefined) {
-            query.location = {
-                $near: {
-                    $geometry: {
-                        type: 'Point',
-                        coordinates: [longitude, latitude],
+            const pipeline = [
+                {
+                    $geoNear: {
+                        near: { type: 'Point', coordinates: [longitude, latitude] },
+                        distanceField: 'distanceMeters',
+                        maxDistance: radiusKm * 1000,
+                        spherical: true,
+                        query: { expiresAt: { $gt: new Date() } },
                     },
-                    $maxDistance: radiusKm * 1000,
                 },
-            };
+                {
+                    $lookup: {
+                        from: 'signups',
+                        localField: 'createdBy',
+                        foreignField: '_id',
+                        as: 'createdBy',
+                    },
+                },
+                { $unwind: { path: '$createdBy', preserveNullAndEmptyArrays: true } },
+                {
+                    $addFields: {
+                        distanceKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 1] },
+                    },
+                },
+                {
+                    $project: {
+                        _id: 1, title: 1, description: 1, locationName: 1,
+                        location: 1, expiresAt: 1, createdAt: 1, updatedAt: 1, distanceKm: 1,
+                        createdBy: { _id: 1, username: 1, email: 1, role: 1 },
+                    },
+                },
+            ];
+
+            return this.alertModel.aggregate(pipeline as any).exec();
         }
 
-        const request = this.alertModel.find(query).populate('createdBy', 'username email role');
-
-        if (!query.location) {
-            request.sort({ createdAt: -1 });
-        }
-
-        return request.exec();
+        return this.alertModel
+            .find({ expiresAt: { $gt: new Date() } })
+            .sort({ createdAt: -1 })
+            .populate('createdBy', 'username email role')
+            .exec();
     }
 }
