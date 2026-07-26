@@ -1,0 +1,5 @@
+{
+  "latestVersion": "1.0.1",
+  "apkUrl": "/app-release.apk",
+  "releaseNotes": "- In-app update system added\n- Fix tracking map blank screen bug"
+}
