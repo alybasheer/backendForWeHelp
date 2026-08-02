@@ -175,7 +175,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         @MessageBody() data: { latitude: number; longitude: number; requestId: string },
     ) {
         const volunteerId = socket.userId;
-        if (!volunteerId || !data.latitude || !data.longitude || !data.requestId) return;
+        if (!volunteerId || typeof data.latitude !== 'number' || typeof data.longitude !== 'number' || !data.requestId) return;
 
         try {
             const request = await this.helpRequestModel.findById(data.requestId).exec();
