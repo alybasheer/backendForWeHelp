@@ -11,7 +11,10 @@ export class AppVersionController {
     try {
       const raw = fs.readFileSync(jsonPath, 'utf-8');
       const data = JSON.parse(raw);
-      const protocol = req.protocol;
+      const forwardedProto = req.headers['x-forwarded-proto'] as string | undefined;
+      const protocol = forwardedProto
+        ? forwardedProto.split(',')[0].trim()
+        : req.protocol;
       const host = req.get('host');
       data.apkUrl = `${protocol}://${host}${data.apkUrl}`;
       return { success: true, data };
