@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.0.5",
+  "latestVersion": "1.0.6",
   "apkUrl": "/app-release.apk",
-  "releaseNotes": "- New: Emergency Helpline button (opens phone dial pad with Rescue 1122 / Police 15 / Ambulance 115 pre-filled)\n- New: after sending SOS you can call a helpline directly from the confirmation dialog\n- New: app version badge (v1.0.4) shown on Home screens"
+  "releaseNotes": "- New: SOS status card (volunteers notified, elapsed time, cancel)\n- New: SOS never expires, broadcasts wider (20km) and re-escalates if unaccepted\n- New: only one active SOS at a time\n- New: volunteers get sound/vibration alert + EMERGENCY card pinned on top\n- New: helpline dial pad numbers expanded (Fire 16, Women Helpline 1739)"
 }
