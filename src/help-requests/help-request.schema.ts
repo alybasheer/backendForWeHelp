@@ -49,18 +49,35 @@ export class HelpRequest {
     })
     location: { type: string; coordinates: number[] };
 
-    @Prop({ required: true, default: 'open', enum: ['open', 'accepted', 'resolved'] })
+    @Prop({ required: true, default: 'open', enum: ['open', 'accepted', 'resolved', 'cancelled'] })
     status: string;
 
     @Prop({ type: Types.ObjectId, ref: 'Signup', required: false })
     acceptedBy?: Types.ObjectId;
 
     /**
+     * Number of nearby online volunteers notified when this request was
+     * broadcast (used by the SOS status card).
+     */
+    @Prop({ required: true, default: 0 })
+    notifiedCount: number;
+
+    /**
+     * SOS escalation stage (0 = none, 1..3 = escalated).
+     */
+    @Prop({ required: true, default: 0 })
+    escalationLevel: number;
+
+    @Prop({ required: false })
+    lastEscalatedAt?: Date;
+
+    /**
      * TTL field — MongoDB automatically deletes the document
      * when the current time exceeds this value.
+     * Not set for SOS requests (they never expire).
      */
-    @Prop({ required: true })
-    expiresAt: Date;
+    @Prop({ required: false })
+    expiresAt?: Date;
 }
 
 export const HelpRequestSchema = SchemaFactory.createForClass(HelpRequest);
