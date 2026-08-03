@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.0.4",
+  "latestVersion": "1.0.5",
   "apkUrl": "/app-release.apk",
-  "releaseNotes": "- New: app version badge (v1.0.4) shown on Home screens\n- Fixed: update dialog kept appearing every time the app started (Later now sticks)\n- Fixed: tapping Update Now could silently fail to open the installer"
+  "releaseNotes": "- New: Emergency Helpline button (opens phone dial pad with Rescue 1122 / Police 15 / Ambulance 115 pre-filled)\n- New: after sending SOS you can call a helpline directly from the confirmation dialog\n- New: app version badge (v1.0.4) shown on Home screens"
 }
