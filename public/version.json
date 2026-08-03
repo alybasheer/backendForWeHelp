@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.0.3",
+  "latestVersion": "1.0.4",
   "apkUrl": "/app-release.apk",
-  "releaseNotes": "- Fixed: update dialog kept appearing every time the app started (Later now sticks)\n- Fixed: tapping Update Now could silently fail to open the installer\n- Added: clearer error messages if the installer cannot be opened"
+  "releaseNotes": "- New: app version badge (v1.0.4) shown on Home screens\n- Fixed: update dialog kept appearing every time the app started (Later now sticks)\n- Fixed: tapping Update Now could silently fail to open the installer"
 }
