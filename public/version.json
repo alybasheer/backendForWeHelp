@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.0.2",
+  "latestVersion": "1.0.3",
   "apkUrl": "/app-release.apk",
-  "releaseNotes": "- Fixed: tracking card and View Map button never appeared after request accepted\n- Fixed: live volunteer location not updating for help seeker\n- Fixed: route not updating while volunteer drives\n- Fixed: traveled route line not showing"
+  "releaseNotes": "- Fixed: update dialog kept appearing every time the app started (Later now sticks)\n- Fixed: tapping Update Now could silently fail to open the installer\n- Added: clearer error messages if the installer cannot be opened"
 }
