@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WeHelp — Live Tracking</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        body { background: #0f172a; color: #e2e8f0; display: flex; height: 100vh; }
+
+        #auth { margin: auto; background: #1e293b; padding: 2rem; border-radius: 1rem; width: 380px; box-shadow: 0 0 40px rgba(0,0,0,.5); }
+        #auth h1 { text-align: center; margin-bottom: .5rem; font-size: 1.5rem; }
+        #auth p { text-align: center; color: #94a3b8; margin-bottom: 1.5rem; font-size: .9rem; }
+        #auth input { width: 100%; padding: .75rem; margin-bottom: .75rem; border: 1px solid #334155; border-radius: .5rem; background: #0f172a; color: #e2e8f0; font-size: .9rem; outline: none; }
+        #auth input:focus { border-color: #3b82f6; }
+        #auth button { width: 100%; padding: .75rem; border: none; border-radius: .5rem; background: #3b82f6; color: #fff; font-size: 1rem; cursor: pointer; font-weight: 600; }
+        #auth button:hover { background: #2563eb; }
+        #auth .error { color: #ef4444; font-size: .85rem; text-align: center; margin-top: .5rem; }
+        #auth .info { color: #22c55e; font-size: .85rem; text-align: center; margin-top: .5rem; }
+
+        #app { display: none; flex: 1; flex-direction: column; }
+        #topbar { display: flex; align-items: center; gap: 1rem; padding: .75rem 1.25rem; background: #1e293b; border-bottom: 1px solid #334155; }
+        #topbar .brand { font-weight: 700; font-size: 1.1rem; }
+        #topbar .badge { background: #3b82f6; padding: .25rem .75rem; border-radius: 999px; font-size: .8rem; }
+        #topbar .spacer { flex: 1; }
+        #topbar button { background: #334155; border: none; color: #e2e8f0; padding: .4rem .9rem; border-radius: .4rem; cursor: pointer; font-size: .8rem; }
+        #topbar button:hover { background: #475569; }
+        #topbar .role-badge { font-size: .8rem; color: #94a3b8; }
+
+        #map { flex: 1; }
+        .leaflet-container { background: #1e293b !important; }
+
+        #panel { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); background: #1e293b; border: 1px solid #334155; border-radius: .75rem; padding: .75rem 1.25rem; display: flex; gap: .75rem; align-items: center; z-index: 1000; font-size: .85rem; box-shadow: 0 4px 20px rgba(0,0,0,.5); max-width: 90vw; flex-wrap: wrap; justify-content: center; display: none; }
+        #panel button { background: #3b82f6; border: none; color: #fff; padding: .4rem 1rem; border-radius: .4rem; cursor: pointer; font-size: .8rem; font-weight: 600; white-space: nowrap; }
+        #panel button:hover { background: #2563eb; }
+        #panel button.danger { background: #ef4444; }
+        #panel button.danger:hover { background: #dc2626; }
+        #panel button.success { background: #22c55e; }
+        #panel button.success:hover { background: #16a34a; }
+        #panel .stat { text-align: center; padding: 0 .5rem; }
+        #panel .stat .val { font-weight: 700; font-size: 1rem; }
+        #panel .stat .lbl { color: #94a3b8; font-size: .7rem; text-transform: uppercase; }
+
+        #sidebar { position: fixed; right: 1rem; top: 4.5rem; width: 300px; max-height: calc(100vh - 6rem); background: #1e293b; border: 1px solid #334155; border-radius: .75rem; z-index: 1000; overflow-y: auto; display: none; box-shadow: 0 4px 20px rgba(0,0,0,.5); }
+        #sidebar h3 { padding: .75rem 1rem; border-bottom: 1px solid #334155; font-size: .9rem; }
+        #sidebar .item { padding: .75rem 1rem; border-bottom: 1px solid #1e293b; cursor: pointer; transition: background .15s; }
+        #sidebar .item:hover { background: #334155; }
+        #sidebar .item .title { font-weight: 600; font-size: .9rem; }
+        #sidebar .item .meta { color: #94a3b8; font-size: .8rem; margin-top: .2rem; }
+        #sidebar .item .actions { margin-top: .5rem; display: flex; gap: .5rem; }
+        #sidebar .item .actions button { font-size: .75rem; padding: .25rem .6rem; }
+        #sidebar .empty { padding: 2rem 1rem; text-align: center; color: #64748b; font-size: .85rem; }
+
+        #create-modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 2000; display: none; align-items: center; justify-content: center; }
+        #create-modal .modal { background: #1e293b; padding: 1.5rem; border-radius: .75rem; width: 400px; max-width: 90vw; }
+        #create-modal .modal h2 { margin-bottom: 1rem; font-size: 1.1rem; }
+        #create-modal .modal input, #create-modal .modal select, #create-modal .modal textarea { width: 100%; padding: .6rem; margin-bottom: .6rem; border: 1px solid #334155; border-radius: .4rem; background: #0f172a; color: #e2e8f0; font-size: .85rem; outline: none; }
+        #create-modal .modal textarea { resize: vertical; min-height: 60px; }
+        #create-modal .modal .row { display: flex; gap: .6rem; }
+        #create-modal .modal .row > * { flex: 1; }
+        #create-modal .modal .btn-row { display: flex; gap: .6rem; margin-top: .5rem; }
+        #create-modal .modal .btn-row button { flex: 1; padding: .6rem; border: none; border-radius: .4rem; cursor: pointer; font-weight: 600; font-size: .85rem; }
+        #create-modal .modal .btn-row .cancel { background: #334155; color: #e2e8f0; }
+        #create-modal .modal .btn-row .submit { background: #3b82f6; color: #fff; }
+        #create-modal .modal .btn-row .submit:hover { background: #2563eb; }
+
+        .pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+    </style>
+</head>
+<body>
+
+<div id="auth">
+    <h1>🚀 WeHelp</h1>
+    <p>Real-time Volunteer Tracking</p>
+    <input type="email" id="email" placeholder="Email" value="admin123@gmail.com" />
+    <input type="password" id="password" placeholder="Password" value="admin123" />
+    <button onclick="login()">Sign In</button>
+    <div id="auth-msg"></div>
+</div>
+
+<div id="app">
+    <div id="topbar">
+        <span class="brand">🚀 WeHelp</span>
+        <span class="role-badge" id="role-badge"></span>
+        <span class="spacer"></span>
+        <span id="conn-status" style="font-size:.75rem;color:#94a3b8">● connecting...</span>
+        <button onclick="logout()">Logout</button>
+    </div>
+    <div id="map"></div>
+
+    <div id="sidebar">
+        <h3 id="sidebar-title">Nearby Open Requests</h3>
+        <div id="sidebar-list"></div>
+    </div>
+
+    <div id="panel">
+        <div class="stat"><div class="val" id="stat-dist">--</div><div class="lbl">Distance</div></div>
+        <div class="stat"><div class="val" id="stat-eta">--</div><div class="lbl">ETA</div></div>
+        <div class="stat"><div class="val" id="stat-dur">--</div><div class="lbl">Trip Time</div></div>
+        <div id="panel-actions"></div>
+    </div>
+</div>
+
+<div id="create-modal">
+    <div class="modal">
+        <h2>New Help Request</h2>
+        <select id="cr-category"><option>Other</option><option>Medical</option><option>Fire</option><option>Accident</option><option>Natural Disaster</option></select>
+        <select id="cr-subcategory"><option>General</option><option>Emergency</option></select>
+        <textarea id="cr-description" placeholder="Describe your situation..."></textarea>
+        <div class="row">
+            <input type="number" id="cr-lat" step="any" placeholder="Latitude" />
+            <input type="number" id="cr-lng" step="any" placeholder="Longitude" />
+        </div>
+        <div class="btn-row">
+            <button class="cancel" onclick="closeCreate()">Cancel</button>
+            <button class="submit" onclick="submitRequest()">Post Request</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────
+let TOKEN = null;
+let USER = null;
+let socket = null;
+let map = null;
+let myMarker = null;
+let volunteerMarker = null;
+let routeLine = null;
+let currentRequestId = null;
+let trackingInterval = null;
+let myRequests = [];
+
+// ─── Auth ────────────────────────────────────────
+async function login() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const msg = document.getElementById('auth-msg');
+    msg.className = '';
+    msg.textContent = 'Signing in...';
+
+    try {
+        const res = await fetch('/authentication/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) { msg.className = 'error'; msg.textContent = data.message || 'Login failed'; return; }
+        TOKEN = data.access_token;
+        USER = { id: data.userId || data.sub, role: data.role || data.user?.role, email };
+        document.getElementById('auth').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        document.getElementById('role-badge').textContent = USER.role;
+        initApp();
+    } catch (e) {
+        msg.className = 'error';
+        msg.textContent = 'Network error: ' + e.message;
+    }
+}
+
+function logout() {
+    if (trackingInterval) { clearInterval(trackingInterval); trackingInterval = null; }
+    if (socket) { socket.disconnect(); socket = null; }
+    TOKEN = null; USER = null;
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('auth').style.display = 'flex';
+    document.getElementById('auth-msg').textContent = '';
+}
+
+// ─── API Helper ──────────────────────────────────
+async function api(path, opts = {}) {
+    const res = await fetch(path, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}`, ...opts.headers },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+    return data;
+}
+
+// ─── Init ────────────────────────────────────────
+function initApp() {
+    map = L.map('map').setView([31.52, 74.35], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap',
+    }).addTo(map);
+
+    connectSocket();
+    getLocation();
+
+    if (USER.role === 'volunteer') {
+        showVolunteerView();
+    } else {
+        showSeekerView();
+    }
+}
+
+// ─── Geolocation ────────────────────────────────
+function getLocation() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            const { latitude, longitude } = pos.coords;
+            map.setView([latitude, longitude], 14);
+            if (myMarker) myMarker.setLatLng([latitude, longitude]);
+            else myMarker = L.circleMarker([latitude, longitude], { radius: 8, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: .8 }).addTo(map);
+            updateLocationOnServer(latitude, longitude);
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+async function updateLocationOnServer(lat, lng) {
+    try { await api('/authentication/location', { method: 'POST', body: JSON.stringify({ latitude: lat, longitude: lng }) }); } catch {}
+}
+
+// ─── WebSocket ──────────────────────────────────
+function connectSocket() {
+    const status = document.getElementById('conn-status');
+    if (socket) socket.disconnect();
+
+    socket = io({ auth: { token: TOKEN } });
+
+    socket.on('connect', () => { status.textContent = '● connected'; status.style.color = '#22c55e'; });
+    socket.on('disconnect', () => { status.textContent = '○ disconnected'; status.style.color = '#ef4444'; });
+    socket.on('connect_error', () => { status.textContent = '● error'; status.style.color = '#ef4444'; });
+    socket.on('connection_success', (d) => {});
+
+    socket.on('volunteer_location', (data) => {
+        if (data.requestId === currentRequestId) {
+            if (!volunteerMarker) {
+                volunteerMarker = L.marker([data.latitude, data.longitude], {
+                    icon: L.divIcon({ className: '', html: '<div style="background:#22c55e;width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }),
+                }).addTo(map);
+            } else {
+                volunteerMarker.setLatLng([data.latitude, data.longitude]);
+            }
+            updateRouteLine([data.latitude, data.longitude]);
+            updateStats([data.latitude, data.longitude]);
+        }
+    });
+
+    socket.on('tracking_status', (data) => {
+        if (data.requestId === currentRequestId) {
+            if (data.status === 'en_route') {
+                showPanel(`Volunteer is on the way!`);
+            } else if (data.status === 'arrived') {
+                showPanel(`Volunteer has arrived!`);
+                if (trackingInterval) { clearInterval(trackingInterval); trackingInterval = null; }
+            }
+        }
+    });
+
+    socket.on('new_help_request', (data) => {
+        if (USER.role === 'volunteer') loadOpenRequests();
+    });
+
+    socket.on('help_request_accepted', (data) => {
+        if (data.requestId === currentRequestId) {
+            showPanel('Your request was accepted!');
+            loadMyRequests();
+        }
+    });
+}
+
+// ─── Help Seeker View ──────────────────────────
+function showSeekerView() {
+    document.getElementById('sidebar-title').textContent = 'My Requests';
+    document.getElementById('sidebar').style.display = 'block';
+    loadMyRequests();
+
+    const btn = document.createElement('button');
+    btn.textContent = '+ New Request';
+    btn.style.cssText = 'position:fixed;right:1rem;bottom:5rem;z-index:1000;background:#3b82f6;color:#fff;border:none;padding:.6rem 1rem;border-radius:.5rem;cursor:pointer;font-weight:600;font-size:.9rem;box-shadow:0 4px 12px rgba(0,0,0,.4);';
+    btn.onclick = () => openCreateModal();
+    btn.id = 'create-btn';
+    document.body.appendChild(btn);
+}
+
+async function loadMyRequests() {
+    try {
+        const res = await api('/help-requests/my');
+        myRequests = res.data || [];
+        renderMyRequests();
+    } catch {}
+}
+
+function renderMyRequests() {
+    const list = document.getElementById('sidebar-list');
+    if (!myRequests.length) { list.innerHTML = '<div class="empty">No requests yet</div>'; return; }
+    list.innerHTML = myRequests.map(r => {
+        const statusColor = { open: '#f59e0b', accepted: '#3b82f6', resolved: '#22c55e' }[r.status] || '#94a3b8';
+        return `<div class="item" onclick="selectRequest('${r._id}')">
+            <div class="title">${r.title || r.subCategory || r.category} <span style="color:${statusColor};font-size:.7rem;text-transform:uppercase;margin-left:.5rem">${r.status}</span></div>
+            <div class="meta">${r.category} — ${r.description?.slice(0, 60)}${r.description?.length > 60 ? '...' : ''}</div>
+            ${r.status === 'accepted' ? '<div style="color:#22c55e;font-size:.75rem;margin-top:.25rem">● Volunteer assigned</div>' : ''}
+        </div>`;
+    }).join('');
+    const active = myRequests.find(r => r.status === 'accepted');
+    if (active) selectRequest(active._id);
+}
+
+async function selectRequest(id) {
+    currentRequestId = id;
+    try {
+        const res = await api(`/help-requests/${id}`);
+        const req = res.data;
+        if (req.location?.coordinates) {
+            const [lng, lat] = req.location.coordinates;
+            map.setView([lat, lng], 14);
+            if (!myMarker) myMarker = L.circleMarker([lat, lng], { radius: 8, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: .8 }).addTo(map);
+            else myMarker.setLatLng([lat, lng]);
+        }
+        if (req.status === 'accepted') {
+            showPanel('Request accepted — waiting for volunteer location...');
+            document.getElementById('panel').style.display = 'flex';
+            if (req.location?.coordinates) {
+                const [lng, lat] = req.location.coordinates;
+                document.getElementById('stat-dist').textContent = '0.0 km';
+                document.getElementById('stat-eta').textContent = '--';
+                document.getElementById('stat-dur').textContent = '--';
+            }
+        } else if (req.status === 'open') {
+            hidePanel();
+        }
+    } catch {}
+}
+
+// ─── Volunteer View ─────────────────────────────
+function showVolunteerView() {
+    document.getElementById('sidebar-title').textContent = 'Nearby Open Requests';
+    document.getElementById('sidebar').style.display = 'block';
+    loadOpenRequests();
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+            (pos) => {
+                const { latitude, longitude } = pos.coords;
+                if (myMarker) myMarker.setLatLng([latitude, longitude]);
+                else myMarker = L.circleMarker([latitude, longitude], { radius: 8, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: .8 }).addTo(map);
+                updateLocationOnServer(latitude, longitude);
+                if (currentRequestId && trackingInterval) {
+                    socket.emit('update_location', { latitude, longitude, requestId: currentRequestId });
+                }
+            },
+            () => {},
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 3000 }
+        );
+    }
+}
+
+async function loadOpenRequests() {
+    if (!myMarker) return;
+    const { lat, lng } = myMarker.getLatLng();
+    try {
+        const res = await api(`/help-requests?lat=${lat}&lng=${lng}&radius=25`);
+        const requests = res.data || [];
+        renderOpenRequests(requests);
+    } catch {}
+}
+
+function renderOpenRequests(requests) {
+    const list = document.getElementById('sidebar-list');
+    if (!requests.length) { list.innerHTML = '<div class="empty">No open requests nearby</div>'; return; }
+    list.innerHTML = requests.map(r => {
+        const dist = r.roadDistanceKm ? `${r.roadDistanceKm} km (road)` : (r.distanceKm ? `${r.distanceKm} km` : '--');
+        return `<div class="item" onclick="focusRequest('${r._id}')">
+            <div class="title">${r.title || r.subCategory || r.category}</div>
+            <div class="meta">${r.category} — ${dist}${r.roadDurationMinutes ? ` · ~${r.roadDurationMinutes} min` : ''}</div>
+            <div class="actions"><button onclick="event.stopPropagation();acceptRequest('${r._id}')">Accept</button></div>
+        </div>`;
+    }).join('');
+}
+
+async function focusRequest(id) {
+    currentRequestId = id;
+    try {
+        const res = await api(`/help-requests/${id}`);
+        const req = res.data;
+        if (req.location?.coordinates) {
+            const [lng, lat] = req.location.coordinates;
+            map.setView([lat, lng], 14);
+            L.circleMarker([lat, lng], { radius: 10, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: .5 }).addTo(map);
+        }
+    } catch {}
+}
+
+async function acceptRequest(id) {
+    try {
+        await api(`/help-requests/${id}/accept`);
+        currentRequestId = id;
+        showPanel('Request accepted! Start navigation?');
+        document.getElementById('panel').style.display = 'flex';
+        document.getElementById('panel-actions').innerHTML = `
+            <button class="success" onclick="startTracking('${id}')">Start Navigation</button>
+            <button onclick="loadOpenRequests()">Back</button>
+        `;
+        loadOpenRequests();
+    } catch (e) {
+        alert('Failed to accept: ' + e.message);
+    }
+}
+
+function startTracking(id) {
+    currentRequestId = id;
+    socket.emit('start_tracking', { requestId: id });
+    document.getElementById('panel-actions').innerHTML = `
+        <span style="color:#22c55e;font-size:.8rem" class="pulse">● NAVIGATING</span>
+        <button class="danger" onclick="stopTracking('${id}')">Arrived</button>
+    `;
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            const { latitude, longitude } = pos.coords;
+            socket.emit('update_location', { latitude, longitude, requestId: id });
+            loadRoute(id, latitude, longitude);
+        }, () => {}, { enableHighAccuracy: true });
+    }
+
+    if (trackingInterval) clearInterval(trackingInterval);
+    trackingInterval = setInterval(() => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    socket.emit('update_location', { latitude, longitude, requestId: id });
+                },
+                () => {},
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        }
+    }, 5000);
+}
+
+function stopTracking(id) {
+    if (trackingInterval) { clearInterval(trackingInterval); trackingInterval = null; }
+    socket.emit('stop_tracking', { requestId: id });
+    hidePanel();
+    alert('Marked as arrived!');
+}
+
+async function loadRoute(requestId, fromLat, fromLng) {
+    try {
+        const res = await api(`/help-requests/${requestId}`);
+        const req = res.data;
+        if (!req.location?.coordinates) return;
+        const [destLng, destLat] = req.location.coordinates;
+        const routeRes = await api(`/help-requests/${requestId}/route`);
+        const { route } = routeRes.data;
+        if (routeLine) map.removeLayer(routeLine);
+        if (route.polyline?.length) {
+            routeLine = L.polyline(route.polyline, { color: '#3b82f6', weight: 4, opacity: .7 }).addTo(map);
+            map.fitBounds(routeLine.getBounds().pad(.1));
+        }
+        document.getElementById('stat-dist').textContent = `${route.distanceKm} km`;
+        document.getElementById('stat-eta').textContent = `~${route.durationMinutes} min`;
+        document.getElementById('stat-dur').textContent = `~${route.durationMinutes} min`;
+    } catch {}
+}
+
+function updateRouteLine(volunteerLatLng) {
+    if (!currentRequestId) return;
+    const [volLat, volLng] = volunteerLatLng;
+    (async () => {
+        try {
+            const res = await api(`/help-requests/${currentRequestId}`);
+            const req = res.data;
+            if (!req.location?.coordinates) return;
+            const [destLng, destLat] = req.location.coordinates;
+            const routeRes = await api(`/help-requests/${currentRequestId}/route`);
+            const { route } = routeRes.data;
+            if (routeLine) map.removeLayer(routeLine);
+            if (route.polyline?.length) {
+                const full = route.polyline;
+                const volIdx = findClosestPointOnPolyline([volLat, volLng], full);
+                const remaining = full.slice(volIdx);
+                routeLine = L.polyline(remaining, { color: '#3b82f6', weight: 4, opacity: .7 }).addTo(map);
+                const traveled = full.slice(0, volIdx + 1);
+                if (traveled.length > 1) {
+                    L.polyline(traveled, { color: '#64748b', weight: 3, opacity: .4, dashArray: '5,5' }).addTo(map);
+                }
+            }
+        } catch {}
+    })();
+}
+
+function findClosestPointOnPolyline(point, polyline) {
+    let minDist = Infinity, minIdx = 0;
+    for (let i = 0; i < polyline.length; i++) {
+        const d = Math.hypot(point[0] - polyline[i][0], point[1] - polyline[i][1]);
+        if (d < minDist) { minDist = d; minIdx = i; }
+    }
+    return minIdx;
+}
+
+function updateStats(volunteerLatLng) {
+    if (!currentRequestId) return;
+    (async () => {
+        try {
+            const res = await api(`/help-requests/${currentRequestId}`);
+            const req = res.data;
+            if (!req.location?.coordinates) return;
+            const [destLng, destLat] = req.location.coordinates;
+            const [volLat, volLng] = volunteerLatLng;
+            const R = 6371;
+            const dLat = (destLat - volLat) * Math.PI / 180;
+            const dLng = (destLng - volLng) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(volLat * Math.PI / 180) * Math.cos(destLat * Math.PI / 180) * Math.sin(dLng/2)**2;
+            const dist = (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(1);
+            const estMin = Math.max(1, Math.round(dist / 30 * 60));
+            document.getElementById('stat-dist').textContent = `${dist} km`;
+            document.getElementById('stat-eta').textContent = `~${estMin} min`;
+        } catch {}
+    })();
+}
+
+// ─── Create Request ─────────────────────────────
+function openCreateModal() {
+    document.getElementById('create-modal').style.display = 'flex';
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            document.getElementById('cr-lat').value = pos.coords.latitude.toFixed(6);
+            document.getElementById('cr-lng').value = pos.coords.longitude.toFixed(6);
+        }, () => {}, { enableHighAccuracy: true });
+    }
+}
+
+function closeCreate() { document.getElementById('create-modal').style.display = 'none'; }
+
+async function submitRequest() {
+    const body = {
+        category: document.getElementById('cr-category').value,
+        subCategory: document.getElementById('cr-subcategory').value,
+        description: document.getElementById('cr-description').value,
+        latitude: parseFloat(document.getElementById('cr-lat').value),
+        longitude: parseFloat(document.getElementById('cr-lng').value),
+    };
+    if (!body.latitude || !body.longitude) { alert('Please set location'); return; }
+    try {
+        await api('/help-requests', { method: 'POST', body: JSON.stringify(body) });
+        closeCreate();
+        loadMyRequests();
+    } catch (e) { alert('Failed: ' + e.message); }
+}
+
+// ─── Panel ──────────────────────────────────────
+function showPanel(msg) {
+    document.getElementById('panel').style.display = 'flex';
+}
+
+function hidePanel() {
+    document.getElementById('panel').style.display = 'none';
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    if (volunteerMarker) { map.removeLayer(volunteerMarker); volunteerMarker = null; }
+    currentRequestId = null;
+}
+
+// ─── Cleanup on unload ──────────────────────────
+window.addEventListener('beforeunload', () => {
+    if (trackingInterval) clearInterval(trackingInterval);
+    if (socket) socket.disconnect();
+});
+</script>
+</body>
+</html>

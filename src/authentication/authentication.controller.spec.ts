@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
 import { AuthenticationController } from './authentication.controller';
 import { AuthenticationService } from './authentication.service';
 
@@ -13,6 +14,7 @@ describe('AuthenticationController', () => {
           provide: AuthenticationService,
           useValue: {},
         },
+        JwtService,
       ],
     }).compile();
 

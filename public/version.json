@@ -1,0 +1,5 @@
+{
+  "latestVersion": "1.0.2",
+  "apkUrl": "/app-release.apk",
+  "releaseNotes": "- Fixed: tracking card and View Map button never appeared after request accepted\n- Fixed: live volunteer location not updating for help seeker\n- Fixed: route not updating while volunteer drives\n- Fixed: traveled route line not showing"
+}

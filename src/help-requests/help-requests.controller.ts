@@ -229,6 +229,16 @@ export class HelpRequestsController {
         media.stream.pipe(res);
     }
 
+    @Get(':id/route')
+    async routeToRequest(@Req() req: any, @Param('id') id: string) {
+        const volunteerId = req.user.sub;
+        const result = await this.helpRequestsService.getRouteToRequest(id, volunteerId);
+        return {
+            success: true,
+            data: result,
+        };
+    }
+
     @Get(':id')
     async findOne(@Param('id') id: string) {
         const request = await this.helpRequestsService.getRequestById(id);

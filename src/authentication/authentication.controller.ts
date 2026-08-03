@@ -1,17 +1,17 @@
-import { BadRequestException, Body, Controller, Get, Headers, Post, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Body, BadRequestException, Controller, Get, Post, UnauthorizedException, UseGuards, Request } from '@nestjs/common';
 import { AuthenticationService } from './authentication.service';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { LocationDto } from './dto/location.dto';
+import { SignupDto } from './dto/signup.dto';
+import { LoginDto } from './dto/login.dto';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 @Controller('authentication')
 export class AuthenticationController {
     constructor(private readonly authService: AuthenticationService) { }
 
     @Post('signup')
-    async signup(@Body() body: { username: string; email: string; password: string }) {
-        if (!body.username || !body.email || !body.password) {
-            throw new BadRequestException('username, email and password are required');
-        }
+    async signup(@Body() body: SignupDto) {
         const result = await this.authService.create(body);
         // result is { user, access_token }
         return {
@@ -22,11 +22,8 @@ export class AuthenticationController {
     }
 
     @Post('login')
-    async login(@Body() body: { email: string; password: string }) {
-        if (!body.email || !body.password) {
-            throw new BadRequestException('email and password are required');
-        }
-        const auth = await this.authService.validateUser(body.email, body.password);
+    async login(@Body() loginDto: LoginDto) {
+        const auth = await this.authService.validateUser(loginDto.email, loginDto.password);
         if (!auth) { throw new UnauthorizedException('Invalid email or password') };
         // auth is { user, access_token }
         return {
@@ -53,19 +50,16 @@ export class AuthenticationController {
      * - On success, read latitude/longitude from `navigator.geolocation.getCurrentPosition`.
      * - POST to this endpoint with JSON { latitude, longitude } and header `Authorization: Bearer <token>`.
      */
+    @UseGuards(JwtAuthGuard)
     @Post('location')
-    async updateLocation(@Headers('authorization') auth: string, @Body() body: LocationDto) {
-        if (!auth) throw new BadRequestException('Authorization header required');
-        const token = auth.replace(/^Bearer\s+/i, '');
-        const payload: any = new JwtService({}).verify(token, { secret: process.env.JWT_SECRET ?? 'dev_secret_key' });
-        const userId = payload.sub;
-
+    async updateLocation(@Request() req, @Body() body: LocationDto) {
+        const userId = req.user.sub;
         // body.latitude and body.longitude are guaranteed numbers now
         return this.authService.updateLocationById(userId, body.latitude, body.longitude);
     }
 
     @Post('google-login')
-    async loginWithGoogle(@Body() body: { idToken: string; username: string }) {
+    async loginWithGoogle(@Body() body: GoogleLoginDto) {
         if (!body.idToken) {
             throw new BadRequestException('idToken is required');
         }

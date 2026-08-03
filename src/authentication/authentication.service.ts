@@ -128,7 +128,7 @@ export class AuthenticationService {
         return user.save();
     }
 
-    async loginWithGoogle(idToken: string, username: string) {
+    async loginWithGoogle(idToken: string, username?: string) {
         try {
             const googleUser = await this.firebaseService.verifyGoogleToken(idToken);
 

@@ -5,6 +5,7 @@ import { Connection } from 'mongoose';
 import { FirebaseModule } from './firebase/firebase.module';
 import { AdminModule } from './admin/admin.module';
 import { AlertsModule } from './alerts/alerts.module';
+import { AppVersionModule } from './app-version/app-version.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthenticationModule } from './authentication/authentication.module';
@@ -60,6 +61,7 @@ import { VolunteerModule } from './volunteer/volunteer.module';
 
     HelpRequestsModule,
     AlertsModule,
+    AppVersionModule,
     CommunitiesModule,
     MapModule,
   ],
