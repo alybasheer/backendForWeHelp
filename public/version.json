@@ -1,5 +1,6 @@
 {
-  "latestVersion": "1.0.8",
+  "latestVersion": "1.0.9",
+  "minRequiredVersion": "1.0.8",
   "apkUrl": "/app-release.apk",
-  "releaseNotes": "- Faster: SOS now sends immediately using your last known location - no more waiting on GPS\n- Faster: home screen loads volunteers and requests together, and keeps showing your data while refreshing\n- Fix: SOS and app loading are quicker, and background location name lookups no longer slow the app\n- Fix: language switcher no longer overlaps app content - moved to splash and onboarding screens only\n- Better messages: technical errors are now shown in plain, friendly language (EN & Urdu)\n- Settings > Data and permissions rewritten in clear, simple language"
+  "releaseNotes": "- Update prompt now appears reliably on every launch and resume\n- SOS sends instantly using your last known location\n- Home screen loads faster and keeps your data visible while refreshing\n- Language switcher fixed (no more overlap)\n- Settings > Data and permissions rewritten in plain language\n- Friendlier error messages in English & Urdu"
 }
