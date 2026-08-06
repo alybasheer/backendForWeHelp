@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.0.6",
+  "latestVersion": "1.0.7",
   "apkUrl": "/app-release.apk",
-  "releaseNotes": "- New: SOS status card (volunteers notified, elapsed time, cancel)\n- New: SOS never expires, broadcasts wider (20km) and re-escalates if unaccepted\n- New: only one active SOS at a time\n- New: volunteers get sound/vibration alert + EMERGENCY card pinned on top\n- New: helpline dial pad numbers expanded (Fire 16, Women Helpline 1739)"
+  "releaseNotes": "- Fix: login failure (\"property username should not exist\") - login no longer sends the username field\n- Fix: emergency helpline sheet had no background, causing overlapp/distorted UI - now a proper rounded sheet"
 }
