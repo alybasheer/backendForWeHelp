@@ -261,6 +261,17 @@ export class HelpRequestsService {
                 );
             }
 
+            // Alert the requester so their phone rings louder as the SOS widens.
+            const requester = request.userId?.toString();
+            if (requester) {
+                this.chatGateway.notifyUsers([requester], 'sos_escalated', {
+                    requestId: request._id,
+                    level: level + 1,
+                    radiusKm: step.radiusKm,
+                    minutes: Math.round(ageMinutes),
+                });
+            }
+
             await this.helpRequestModel
                 .updateOne(
                     { _id: request._id },
