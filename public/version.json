@@ -1,6 +1,6 @@
 {
-  "latestVersion": "1.0.9",
+  "latestVersion": "1.1.0",
   "minRequiredVersion": "1.0.8",
   "apkUrl": "/app-release.apk",
-  "releaseNotes": "- Update prompt now appears reliably on every launch and resume\n- SOS sends instantly using your last known location\n- Home screen loads faster and keeps your data visible while refreshing\n- Language switcher fixed (no more overlap)\n- Settings > Data and permissions rewritten in plain language\n- Friendlier error messages in English & Urdu"
+  "releaseNotes": "- NEW: SOS now rings, vibrates and alerts YOU while it's active - no more wondering if it went through\n- NEW: Snooze your SOS alerts (5/15/30 min) with a live countdown and Resume button\n- You'll get a vibrate + sound when a volunteer accepts, and again if your SOS escalates to a wider area\n- Update prompt now appears reliably on every launch and resume\n- SOS sends instantly using your last known location\n- Home screen loads faster and keeps your data visible while refreshing\n- Language switcher fixed (no more overlap)\n- Settings > Data and permissions rewritten in plain language\n- Friendlier error messages in English &amp; Urdu"
 }
