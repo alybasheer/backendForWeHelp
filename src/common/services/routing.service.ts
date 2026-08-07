@@ -109,10 +109,10 @@ export class RoutingService {
             results.push({ error: 'No route', distanceKm: 0, durationMinutes: 0, polyline: null });
           }
         }
-      } catch (err: any) {
-        this.logger.warn(`OSRM table failed for batch ${i}: ${err.message}`);
+      } catch {
+        this.logger.warn(`OSRM table failed for batch ${i}`);
         for (let j = 0; j < batch.length; j++) {
-          results.push({ error: err.message, distanceKm: 0, durationMinutes: 0, polyline: null });
+          results.push({ error: 'No route', distanceKm: 0, durationMinutes: 0, polyline: null });
         }
       }
     }

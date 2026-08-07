@@ -152,7 +152,10 @@ export class AuthenticationService {
             const token = this.signUserToken(user);
             return { user, access_token: token };
         } catch (error) {
-            throw new BadRequestException(`Google login failed: ${error.message}`);
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+            throw new BadRequestException('Google login failed. Please try again.');
         }
     }
 }

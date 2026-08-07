@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Headers, Param, Post, Query } from '@nestjs/common';
+import { BadRequestException, Controller, ForbiddenException, Get, Headers, Param, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AdminService } from './admin.service';
 
@@ -10,14 +10,14 @@ export class AdminController {
     ) { }
 
     private verifyTokenAndGetPayload(authHeader: string) {
-        if (!authHeader) throw new BadRequestException('Authorization header required');
+        if (!authHeader) throw new UnauthorizedException('Authorization header required');
         const token = authHeader.replace(/^Bearer\s+/i, '');
         const payload: any = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'dev_secret_key' });
         return payload;
     }
 
     private ensureAdmin(payload: any) {
-        if (payload.role !== 'admin') throw new BadRequestException('Admin credentials required');
+        if (payload.role !== 'admin') throw new ForbiddenException('Admin credentials required');
     }
 
     /**

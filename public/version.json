@@ -1,9 +1,9 @@
 {
-  "latestVersion": "1.1.5",
+  "latestVersion": "1.1.6",
   "minRequiredVersion": "1.1.0",
   "apkUrl": "/app-release.apk",
   "arm64Url": "/app-release-arm64.apk",
   "v7Url": "/app-release-v7.apk",
   "x86Url": "/app-release-x86_64.apk",
-  "releaseNotes": "- FULL Urdu translation: every screen is now translated - no more mixed English/Urdu\n- Language chooser in Profile > Preferences: tap Language, pick English or Urdu (current one is marked)\n- Update dialogs no longer overflow - text scrolls, buttons never overlap\n- SOS snooze indicator is now clearly visible in both light and dark theme\n- SOS vibration buzz and alert sound on sender and volunteer side\n- Update downloads show real progress and pick a package matching your phone"
+  "releaseNotes": "- SOS now fires in under 2 seconds: your request is sent instantly with the last known location, and updates automatically\n- Automatic retry: if your network drops mid-SOS, the app tries once more on its own\n- No more endless loading: every screen now gives up gracefully with a clear message and a Retry button\n- Errors are now friendly and translated: network, timeout, sign-in and server problems all show simple messages in English or Urdu\n- Images (photos in requests and profiles) load much faster - saved on your phone after first download\n- Privacy section rewritten in plain language with a new Notifications explanation\n- Faster app startup and smoother scrolling\n- Fixed: language chooser sheet could overlap on small screens\n- Fixed: unapproved/failed requests could leave the screen stuck on a skeleton loader"
 }
