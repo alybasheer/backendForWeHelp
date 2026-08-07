@@ -1,9 +1,9 @@
 {
-  "latestVersion": "1.1.7",
+  "latestVersion": "1.1.8",
   "minRequiredVersion": "1.1.0",
   "apkUrl": "/app-release.apk",
   "arm64Url": "/app-release-arm64.apk",
   "v7Url": "/app-release-v7.apk",
   "x86Url": "/app-release-x86_64.apk",
-  "releaseNotes": "- Fixed: snooze, distance, notification and update texts were showing raw placeholders (like \"Snooze {{min}}\") instead of real values - they now show e.g. \"Snooze 15 min\" and \"2.3 km away\"\n- Fixed: all counts (nearby volunteers, SOS recipients, status chips) now display the correct number in English and Urdu\n- Fixed: SOS escalation notices now show the widened radius and elapsed time correctly\n- Update prompts now always show a complete message even if details are missing"
+  "releaseNotes": "- New help requests and SOS alerts now arrive instantly on nearby volunteers (same design, both roles)\n- Real-time connection is now reliable: the app reconnects automatically after a drop, on every resume, and after logging in again\n- Volunteer location is kept fresh in the background so nearby requests are always delivered to you\n- Volunteer home stays active in the background when you switch tabs - you never miss a new request\n- One unified bottom navigation bar with identical design, icons and behavior on both Volunteer and Help Seeker sides"
 }
