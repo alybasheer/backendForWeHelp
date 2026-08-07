@@ -1,9 +1,9 @@
 {
-  "latestVersion": "1.1.3",
+  "latestVersion": "1.1.4",
   "minRequiredVersion": "1.1.0",
   "apkUrl": "/app-release.apk",
   "arm64Url": "/app-release-arm64.apk",
   "v7Url": "/app-release-v7.apk",
   "x86Url": "/app-release-x86_64.apk",
-  "releaseNotes": "- FIXED: App now downloads and installs the exact package for your phone - no more 'App not installed' errors\n- Update downloads now show real progress (percent) and can be paused - 'Later' re-prompts after 12 hours\n- Updates are only forced for very old versions now\n- SOS vibration, sound and snooze all working\n- Language switcher available in Profile > Preferences"
+  "releaseNotes": "- FIXED: SOS now vibrates with a real buzz pattern (not a tiny tap) and plays the alert sound - on both the sender and the volunteer side\n- SOS vibration repeats every minute while your SOS is open, until you snooze or cancel it\n- Update downloads show real progress and pick a package that matches your phone\n- Language switcher available in Profile > Preferences"
 }
