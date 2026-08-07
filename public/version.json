@@ -1,9 +1,9 @@
 {
-  "latestVersion": "1.1.4",
+  "latestVersion": "1.1.5",
   "minRequiredVersion": "1.1.0",
   "apkUrl": "/app-release.apk",
   "arm64Url": "/app-release-arm64.apk",
   "v7Url": "/app-release-v7.apk",
   "x86Url": "/app-release-x86_64.apk",
-  "releaseNotes": "- FIXED: SOS now vibrates with a real buzz pattern (not a tiny tap) and plays the alert sound - on both the sender and the volunteer side\n- SOS vibration repeats every minute while your SOS is open, until you snooze or cancel it\n- Update downloads show real progress and pick a package that matches your phone\n- Language switcher available in Profile > Preferences"
+  "releaseNotes": "- FULL Urdu translation: every screen is now translated - no more mixed English/Urdu\n- Language chooser in Profile > Preferences: tap Language, pick English or Urdu (current one is marked)\n- Update dialogs no longer overflow - text scrolls, buttons never overlap\n- SOS snooze indicator is now clearly visible in both light and dark theme\n- SOS vibration buzz and alert sound on sender and volunteer side\n- Update downloads show real progress and pick a package matching your phone"
 }
