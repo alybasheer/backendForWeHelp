@@ -1,6 +1,9 @@
 {
-  "latestVersion": "1.1.2",
-  "minRequiredVersion": "1.1.2",
+  "latestVersion": "1.1.3",
+  "minRequiredVersion": "1.1.0",
   "apkUrl": "/app-release.apk",
-  "releaseNotes": "- FIXED: Snooze now works properly - bottom sheet no longer overlaps, options show cleanly\n- FIXED: SOS vibration and ringing now work consistently (send, accept, escalation, repeat reminder)\n- FIXED: Language switcher is back in Profile > Settings so you can change it anytime\n- App update downloads are now ~3x faster (smaller APK)"
+  "arm64Url": "/app-release-arm64.apk",
+  "v7Url": "/app-release-v7.apk",
+  "x86Url": "/app-release-x86_64.apk",
+  "releaseNotes": "- FIXED: App now downloads and installs the exact package for your phone - no more 'App not installed' errors\n- Update downloads now show real progress (percent) and can be paused - 'Later' re-prompts after 12 hours\n- Updates are only forced for very old versions now\n- SOS vibration, sound and snooze all working\n- Language switcher available in Profile > Preferences"
 }
