@@ -1,9 +1,9 @@
 {
-  "latestVersion": "1.1.6",
+  "latestVersion": "1.1.7",
   "minRequiredVersion": "1.1.0",
   "apkUrl": "/app-release.apk",
   "arm64Url": "/app-release-arm64.apk",
   "v7Url": "/app-release-v7.apk",
   "x86Url": "/app-release-x86_64.apk",
-  "releaseNotes": "- SOS now fires in under 2 seconds: your request is sent instantly with the last known location, and updates automatically\n- Automatic retry: if your network drops mid-SOS, the app tries once more on its own\n- No more endless loading: every screen now gives up gracefully with a clear message and a Retry button\n- Errors are now friendly and translated: network, timeout, sign-in and server problems all show simple messages in English or Urdu\n- Images (photos in requests and profiles) load much faster - saved on your phone after first download\n- Privacy section rewritten in plain language with a new Notifications explanation\n- Faster app startup and smoother scrolling\n- Fixed: language chooser sheet could overlap on small screens\n- Fixed: unapproved/failed requests could leave the screen stuck on a skeleton loader"
+  "releaseNotes": "- Fixed: snooze, distance, notification and update texts were showing raw placeholders (like \"Snooze {{min}}\") instead of real values - they now show e.g. \"Snooze 15 min\" and \"2.3 km away\"\n- Fixed: all counts (nearby volunteers, SOS recipients, status chips) now display the correct number in English and Urdu\n- Fixed: SOS escalation notices now show the widened radius and elapsed time correctly\n- Update prompts now always show a complete message even if details are missing"
 }
