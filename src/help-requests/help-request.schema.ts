@@ -82,11 +82,10 @@ export class HelpRequest {
 
 export const HelpRequestSchema = SchemaFactory.createForClass(HelpRequest);
 
-// 2dsphere index for geospatial $near queries
-HelpRequestSchema.index({ location: '2dsphere' });
-
 // TTL index — MongoDB auto-deletes documents after expiresAt
 HelpRequestSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-// Compound index for filtered queries (find open requests near a location)
+// Compound 2dsphere index for filtered geospatial queries (find open requests near a location).
+// NOTE: keep exactly ONE 2dsphere index per collection here — multiple 2dsphere indexes make
+// MongoDB reject $geoNear with "more than one 2dsphere index ... unsure which to use".
 HelpRequestSchema.index({ status: 1, location: '2dsphere' });

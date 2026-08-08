@@ -62,7 +62,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             socket.userId = payload.sub;
             this.connectedUsers.set(payload.sub, socket.id);
 
-            console.log(`✅ User ${payload.sub} connected with socket ${socket.id}`);
+            console.log(`✅ User ${payload.sub} (role=${payload.role}) connected with socket ${socket.id} [total connected: ${this.connectedUsers.size}]`);
             socket.emit('connection_success', { message: 'Connected to chat server', userId: payload.sub });
         } catch (error) {
             console.log('❌ Authentication failed:', error.message);
@@ -73,7 +73,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     handleDisconnect(socket: AuthSocket) {
         if (socket.userId) {
             this.connectedUsers.delete(socket.userId);
-            console.log(`✅ User ${socket.userId} disconnected`);
+            console.log(`✅ User ${socket.userId} disconnected (socket ${socket.id}) [total connected: ${this.connectedUsers.size}]`);
         }
     }
 
@@ -258,6 +258,9 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             if (socketId) {
                 this.server.to(socketId).emit(event, data);
                 notified++;
+                console.log(`📢 [${event}] → user ${userId} socket ${socketId} EMITTED`);
+            } else {
+                console.log(`📢 [${event}] ✗ user ${userId} NOT CONNECTED (connectedUsers map miss)`);
             }
         }
         console.log(`📢 [${event}] Notified ${notified}/${userIds.length} users`);
@@ -273,6 +276,11 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     /** Check if a specific user is currently connected. */
     isUserOnline(userId: string): boolean {
         return this.connectedUsers.has(userId);
+    }
+
+    /** Get the live socket id for a user, if connected. */
+    getSocketIdForUser(userId: string): string | undefined {
+        return this.connectedUsers.get(userId);
     }
 
     /** Get the list of all currently connected user IDs. */

@@ -1,9 +1,9 @@
 {
-  "latestVersion": "1.1.8",
+  "latestVersion": "1.1.9",
   "minRequiredVersion": "1.1.0",
   "apkUrl": "/app-release.apk",
   "arm64Url": "/app-release-arm64.apk",
   "v7Url": "/app-release-v7.apk",
   "x86Url": "/app-release-x86_64.apk",
-  "releaseNotes": "- New help requests and SOS alerts now arrive instantly on nearby volunteers (same design, both roles)\n- Real-time connection is now reliable: the app reconnects automatically after a drop, on every resume, and after logging in again\n- Volunteer location is kept fresh in the background so nearby requests are always delivered to you\n- Volunteer home stays active in the background when you switch tabs - you never miss a new request\n- One unified bottom navigation bar with identical design, icons and behavior on both Volunteer and Help Seeker sides"
+  "releaseNotes": "- Real-time notifications verified end-to-end on the live server (register, receive, reconnect, resume, logout all covered)\n- Added [SOCKET] debug logs to trace the real-time connection in the logcat output\n- New help requests and SOS alerts still arrive instantly on nearby volunteers (no design or behavior changes)"
 }

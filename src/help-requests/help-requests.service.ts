@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { SignupDocument } from '../authentication/signup.schema';
@@ -34,7 +34,9 @@ const SOS_ESCALATION_STEPS = [
 ];
 
 @Injectable()
-export class HelpRequestsService {
+export class HelpRequestsService implements OnModuleInit {
+    private readonly logger = new Logger(HelpRequestsService.name);
+
     constructor(
         @InjectModel('HelpRequest') private helpRequestModel: Model<HelpRequestDocument>,
         @InjectModel('Signup') private signupModel: Model<SignupDocument>,
@@ -43,6 +45,41 @@ export class HelpRequestsService {
         private readonly ratingsService: RatingsService,
         private readonly routingService: RoutingService,
     ) {}
+
+    async onModuleInit() {
+        await this.cleanupRedundantGeoIndex();
+    }
+
+    /**
+     * Migration: drop a redundant standalone { location: '2dsphere' } index on the
+     * helprequests collection if it still exists. Multiple 2dsphere indexes on one
+     * collection make MongoDB reject $geoNear with "more than one 2dsphere index ...
+     * unsure which to use". The schema now declares only the compound
+     * { status: 1, location: '2dsphere' } index, which covers the geo query.
+     */
+    private async cleanupRedundantGeoIndex() {
+        try {
+            const indexes = await this.helpRequestModel.collection.indexes();
+            const redundant = indexes.find(
+                (idx: any) =>
+                    idx.key &&
+                    Object.keys(idx.key).length === 1 &&
+                    idx.key.location === '2dsphere',
+            );
+            if (redundant?.name) {
+                await this.helpRequestModel.collection.dropIndex(redundant.name);
+                this.logger.log(
+                    `Dropped redundant 2dsphere index "${redundant.name}" from helprequests`,
+                );
+            } else {
+                this.logger.log('helprequests geo index is clean (single 2dsphere index)');
+            }
+        } catch (error) {
+            this.logger.error(
+                `Failed to clean up redundant geo index on helprequests: ${(error as Error).message}`,
+            );
+        }
+    }
 
     // ──────────────────────────────────────────────
     // CREATE
@@ -95,6 +132,10 @@ export class HelpRequestsService {
         );
 
         const nearbyOnlineVolunteers = nearbyVolunteers.filter((volunteer: any) => volunteer.isOnline);
+        this.logger.log(
+            `📢 createRequest: nearby=${nearbyVolunteers.length} online=${nearbyOnlineVolunteers.length} ` +
+            `[${nearbyVolunteers.map((v: any) => `${v._id}:${v.isOnline ? 'online' : 'offline'}`).join(', ')}]`,
+        );
         const notified = this.chatGateway.notifyUsers(
             nearbyOnlineVolunteers.map((volunteer: any) => volunteer._id.toString()),
             'new_help_request',
@@ -525,6 +566,10 @@ export class HelpRequestsService {
         return volunteers.map((volunteer: any) => {
             const id = volunteer._id.toString();
             const rating = ratings.get(id) ?? { ratingAverage: 0, ratingCount: 0 };
+            const isOnline = this.chatGateway.isUserOnline(id);
+            this.logger.log(
+                `📢 volunteer lookup: id=${id} role=${volunteer.role} online=${isOnline} (socket ${this.chatGateway.getSocketIdForUser?.(id) ?? 'n/a'})`,
+            );
 
             return {
                 _id: volunteer._id,
@@ -536,7 +581,7 @@ export class HelpRequestsService {
                 expertise: expertiseByUser.get(id) ?? '',
                 ratingAverage: rating.ratingAverage,
                 ratingCount: rating.ratingCount,
-                isOnline: this.chatGateway.isUserOnline(id),
+                isOnline,
             };
         });
     }

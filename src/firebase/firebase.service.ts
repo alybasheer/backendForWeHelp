@@ -15,10 +15,17 @@ export class FirebaseService implements OnModuleInit {
 
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     if (serviceAccountJson) {
-      const credential = admin.credential.cert(JSON.parse(serviceAccountJson));
-      this.firebaseApp = admin.initializeApp({ credential });
-      console.log('Firebase Admin SDK initialized from FIREBASE_SERVICE_ACCOUNT_JSON');
-      return;
+      try {
+        const credential = admin.credential.cert(JSON.parse(serviceAccountJson));
+        this.firebaseApp = admin.initializeApp({ credential });
+        console.log('Firebase Admin SDK initialized from FIREBASE_SERVICE_ACCOUNT_JSON');
+        return;
+      } catch (error) {
+        console.error(
+          'Firebase: FIREBASE_SERVICE_ACCOUNT_JSON is malformed, falling back to serviceAccountKey.json/applicationDefault:',
+          (error as Error).message,
+        );
+      }
     }
 
     const serviceAccountPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
