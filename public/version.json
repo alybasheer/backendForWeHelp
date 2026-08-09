@@ -1,9 +1,9 @@
 {
-  "latestVersion": "1.1.10",
+  "latestVersion": "1.1.11",
   "minRequiredVersion": "1.1.0",
   "apkUrl": "/app-release.apk",
   "arm64Url": "/app-release-arm64.apk",
   "v7Url": "/app-release-v7.apk",
   "x86Url": "/app-release-x86_64.apk",
-  "releaseNotes": "- Fixed volunteer live tracking on the seeker home map: the map camera now follows the volunteer in real time and the travelled path renders/updates live\n- Socket listeners are now attached before the connection opens, so no tracking/SOS/chat event can be missed at startup\n- All real-time updates verified end-to-end (12/12 location events, single socket connection, no duplicates)"
+  "releaseNotes": "- Live tracking: marker snaps to OSRM road geometry, follows turns\n- Camera follows volunteer with distance-aware zoom\n- Grey travelled path grows along route\n- Fixed 'Session expired' flash on app startup\n- Socket reconnect reliability improvements\n- All features verified end-to-end (16/16 location events, OSRM road following, camera follow)"
 }
