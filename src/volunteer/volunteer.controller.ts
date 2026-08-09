@@ -8,6 +8,7 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
@@ -28,7 +29,7 @@ export class VolunteerController {
 
   private verifyTokenAndGetPayload(authHeader: string) {
     if (!authHeader)
-      throw new BadRequestException('Authorization header required');
+      throw new UnauthorizedException('Authorization header required');
     const token = authHeader.replace(/^Bearer\s+/i, '');
     const payload: any = this.jwtService.verify(token, {
       secret: process.env.JWT_SECRET ?? 'dev_secret_key',

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { SignupDocument } from '../authentication/signup.schema';
@@ -14,11 +14,29 @@ import { HelpRequestDocument } from './help-request.schema';
 /** Default radius in kilometres for nearby-volunteer queries. */
 const NEARBY_RADIUS_KM = parseInt(process.env.NEARBY_RADIUS_KM ?? '10', 10);
 
+/** Wider broadcast radius used for SOS requests. */
+const SOS_RADIUS_KM = parseInt(process.env.SOS_RADIUS_KM ?? '20', 10);
+
 /** Help requests auto-expire after this many hours. */
 const TTL_HOURS = 24;
 
+/** SOS requests never expire — keep them alive long enough to outlive the TTL index. */
+const SOS_TTL_DAYS = 30;
+
+/**
+ * Escalation ladder for unaccepted SOS requests (lazy, checked on fetch):
+ * [afterMinutes, broadcastRadiusKm]
+ */
+const SOS_ESCALATION_STEPS = [
+    { afterMinutes: 3, radiusKm: 25 },
+    { afterMinutes: 10, radiusKm: 40 },
+    { afterMinutes: 20, radiusKm: 60 },
+];
+
 @Injectable()
-export class HelpRequestsService {
+export class HelpRequestsService implements OnModuleInit {
+    private readonly logger = new Logger(HelpRequestsService.name);
+
     constructor(
         @InjectModel('HelpRequest') private helpRequestModel: Model<HelpRequestDocument>,
         @InjectModel('Signup') private signupModel: Model<SignupDocument>,
@@ -28,6 +46,41 @@ export class HelpRequestsService {
         private readonly routingService: RoutingService,
     ) {}
 
+    async onModuleInit() {
+        await this.cleanupRedundantGeoIndex();
+    }
+
+    /**
+     * Migration: drop a redundant standalone { location: '2dsphere' } index on the
+     * helprequests collection if it still exists. Multiple 2dsphere indexes on one
+     * collection make MongoDB reject $geoNear with "more than one 2dsphere index ...
+     * unsure which to use". The schema now declares only the compound
+     * { status: 1, location: '2dsphere' } index, which covers the geo query.
+     */
+    private async cleanupRedundantGeoIndex() {
+        try {
+            const indexes = await this.helpRequestModel.collection.indexes();
+            const redundant = indexes.find(
+                (idx: any) =>
+                    idx.key &&
+                    Object.keys(idx.key).length === 1 &&
+                    idx.key.location === '2dsphere',
+            );
+            if (redundant?.name) {
+                await this.helpRequestModel.collection.dropIndex(redundant.name);
+                this.logger.log(
+                    `Dropped redundant 2dsphere index "${redundant.name}" from helprequests`,
+                );
+            } else {
+                this.logger.log('helprequests geo index is clean (single 2dsphere index)');
+            }
+        } catch (error) {
+            this.logger.error(
+                `Failed to clean up redundant geo index on helprequests: ${(error as Error).message}`,
+            );
+        }
+    }
+
     // ──────────────────────────────────────────────
     // CREATE
     // ──────────────────────────────────────────────
@@ -36,13 +89,20 @@ export class HelpRequestsService {
      * Create a new help request and return it along with a list of
      * nearby verified volunteers who should be notified.
      */
-    async createRequest(userId: string, dto: CreateHelpRequestDto) {
+    async createRequest(
+        userId: string,
+        dto: CreateHelpRequestDto,
+        radiusKm: number = NEARBY_RADIUS_KM,
+    ) {
         const location = {
             type: 'Point' as const,
             coordinates: [dto.longitude, dto.latitude], // GeoJSON: [lng, lat]
         };
 
-        const expiresAt = new Date(Date.now() + TTL_HOURS * 60 * 60 * 1000);
+        const isSos = (dto as any).isSos === true;
+        const expiresAt = isSos
+            ? new Date(Date.now() + SOS_TTL_DAYS * 24 * 60 * 60 * 1000)
+            : new Date(Date.now() + TTL_HOURS * 60 * 60 * 1000);
 
         const created = new this.helpRequestModel({
             userId: new Types.ObjectId(userId),
@@ -53,9 +113,11 @@ export class HelpRequestsService {
             image: dto.image,
             mediaUrls: dto.mediaUrls ?? [],
             locationName: dto.locationName,
-            isSos: (dto as any).isSos ?? false,
+            isSos,
             location,
             status: 'open',
+            notifiedCount: 0,
+            escalationLevel: 0,
             expiresAt,
         });
 
@@ -65,11 +127,15 @@ export class HelpRequestsService {
         const nearbyVolunteers = await this.findNearbyVolunteers(
             dto.longitude,
             dto.latitude,
-            NEARBY_RADIUS_KM,
+            radiusKm,
             userId, // exclude the requester themselves
         );
 
         const nearbyOnlineVolunteers = nearbyVolunteers.filter((volunteer: any) => volunteer.isOnline);
+        this.logger.log(
+            `📢 createRequest: nearby=${nearbyVolunteers.length} online=${nearbyOnlineVolunteers.length} ` +
+            `[${nearbyVolunteers.map((v: any) => `${v._id}:${v.isOnline ? 'online' : 'offline'}`).join(', ')}]`,
+        );
         const notified = this.chatGateway.notifyUsers(
             nearbyOnlineVolunteers.map((volunteer: any) => volunteer._id.toString()),
             'new_help_request',
@@ -87,22 +153,176 @@ export class HelpRequestsService {
             },
         );
 
+        // Persist how many volunteers were notified (used by the SOS status card)
+        await this.helpRequestModel
+            .updateOne({ _id: saved._id }, { $set: { notifiedCount: notified } })
+            .exec();
+        saved.notifiedCount = notified;
+
         return { request: saved, nearbyVolunteers, nearbyOnlineVolunteers, notified };
     }
 
     async createSosRequest(userId: string, dto: CreateSosRequestDto) {
-        const request = await this.createRequest(userId, {
-            title: dto.title,
-            category: 'SOS',
-            subCategory: dto.title,
-            description: dto.title,
-            locationName: dto.locationName,
-            latitude: dto.latitude,
-            longitude: dto.longitude,
-            isSos: true,
-        } as CreateHelpRequestDto & { isSos: boolean });
+        // One active SOS per user — return the existing one instead of duplicating
+        const existing = await this.helpRequestModel
+            .findOne({
+                userId: new Types.ObjectId(userId),
+                isSos: true,
+                status: { $in: ['open', 'accepted'] },
+            })
+            .populate('acceptedBy', 'username email role')
+            .exec();
+
+        if (existing) {
+            return {
+                request: existing,
+                alreadyActive: true,
+                nearbyVolunteers: [],
+                nearbyOnlineVolunteers: [],
+                notified: 0,
+            };
+        }
+
+        const request = await this.createRequest(
+            userId,
+            {
+                title: dto.title,
+                category: 'SOS',
+                subCategory: dto.title,
+                description: dto.title,
+                locationName: dto.locationName,
+                latitude: dto.latitude,
+                longitude: dto.longitude,
+                isSos: true,
+            } as CreateHelpRequestDto & { isSos: boolean },
+            SOS_RADIUS_KM,
+        );
+
+        return { ...request, alreadyActive: false };
+    }
+
+    /**
+     * Cancel the requester's active SOS and notify volunteers in the
+     * original broadcast radius so the card disappears from their lists.
+     */
+    async cancelSos(userId: string) {
+        const request = await this.helpRequestModel
+            .findOneAndUpdate(
+                {
+                    userId: new Types.ObjectId(userId),
+                    isSos: true,
+                    status: { $in: ['open'] },
+                },
+                { $set: { status: 'cancelled' } },
+                { new: true },
+            )
+            .populate('acceptedBy', 'username email role')
+            .exec();
+
+        if (!request) {
+            throw new BadRequestException('No active SOS to cancel');
+        }
+
+        const coords = request.location?.coordinates;
+        if (coords) {
+            const nearby = await this.findNearbyVolunteers(
+                coords[0],
+                coords[1],
+                SOS_RADIUS_KM,
+            );
+            this.chatGateway.notifyUsers(
+                nearby.filter((v: any) => v.isOnline).map((v: any) => v._id.toString()),
+                'help_request_cancelled',
+                { requestId: request._id },
+            );
+        }
 
         return request;
+    }
+
+    /**
+     * Lazy SOS escalation ladder. For every open SOS older than the step
+     * threshold, re-broadcast to a wider radius and (at the final step)
+     * alert admins. Runs on request fetches, so it does not depend on a
+     * background cron that would never fire on a sleeping instance.
+     */
+    async checkSosEscalations() {
+        const openSos = await this.helpRequestModel
+            .find({ isSos: true, status: 'open' })
+            .exec();
+
+        for (const request of openSos as any[]) {
+            const coords = request.location?.coordinates;
+            if (!coords) continue;
+
+            const ageMinutes =
+                (Date.now() - new Date(request.createdAt).getTime()) / 60000;
+            const level = request.escalationLevel ?? 0;
+            if (level >= SOS_ESCALATION_STEPS.length) continue;
+
+            const step = SOS_ESCALATION_STEPS[level];
+            if (ageMinutes < step.afterMinutes) continue;
+
+            const volunteers = await this.findNearbyVolunteers(
+                coords[0],
+                coords[1],
+                step.radiusKm,
+            );
+            const online = volunteers.filter((v: any) => v.isOnline);
+            const notified = this.chatGateway.notifyUsers(
+                online.map((v: any) => v._id.toString()),
+                'new_help_request',
+                {
+                    _id: request._id,
+                    title: request.title,
+                    category: request.category,
+                    subCategory: request.subCategory,
+                    description: request.description,
+                    location: request.location,
+                    locationName: request.locationName,
+                    isSos: true,
+                    escalated: true,
+                },
+            );
+
+            const isFinalStep = level >= SOS_ESCALATION_STEPS.length - 1;
+            if (isFinalStep) {
+                const admins = await this.signupModel
+                    .find({ role: 'admin' })
+                    .select('_id')
+                    .exec();
+                this.chatGateway.notifyUsers(
+                    admins.map((a: any) => a._id.toString()),
+                    'sos_escalation',
+                    {
+                        requestId: request._id,
+                        message: `SOS ${request._id} still unaccepted after ${Math.round(ageMinutes)} minutes`,
+                        location: request.location,
+                    },
+                );
+            }
+
+            // Alert the requester so their phone rings louder as the SOS widens.
+            const requester = request.userId?.toString();
+            if (requester) {
+                this.chatGateway.notifyUsers([requester], 'sos_escalated', {
+                    requestId: request._id,
+                    level: level + 1,
+                    radiusKm: step.radiusKm,
+                    minutes: Math.round(ageMinutes),
+                });
+            }
+
+            await this.helpRequestModel
+                .updateOne(
+                    { _id: request._id },
+                    {
+                        $set: { escalationLevel: level + 1, lastEscalatedAt: new Date() },
+                        $inc: { notifiedCount: notified },
+                    },
+                )
+                .exec();
+        }
     }
 
     // ──────────────────────────────────────────────
@@ -179,6 +399,8 @@ export class HelpRequestsService {
         latitude: number,
         radiusKm: number = NEARBY_RADIUS_KM,
     ) {
+        await this.checkSosEscalations();
+
         const pipeline = [
             {
                 $geoNear: {
@@ -258,6 +480,8 @@ export class HelpRequestsService {
 
     // ──────────────────────────────────────────────
     async getMyActiveRequests(userId: string) {
+        await this.checkSosEscalations();
+
         return this.helpRequestModel
             .find({
                 userId: new Types.ObjectId(userId),
@@ -342,6 +566,10 @@ export class HelpRequestsService {
         return volunteers.map((volunteer: any) => {
             const id = volunteer._id.toString();
             const rating = ratings.get(id) ?? { ratingAverage: 0, ratingCount: 0 };
+            const isOnline = this.chatGateway.isUserOnline(id);
+            this.logger.log(
+                `📢 volunteer lookup: id=${id} role=${volunteer.role} online=${isOnline} (socket ${this.chatGateway.getSocketIdForUser?.(id) ?? 'n/a'})`,
+            );
 
             return {
                 _id: volunteer._id,
@@ -353,7 +581,7 @@ export class HelpRequestsService {
                 expertise: expertiseByUser.get(id) ?? '',
                 ratingAverage: rating.ratingAverage,
                 ratingCount: rating.ratingCount,
-                isOnline: this.chatGateway.isUserOnline(id),
+                isOnline,
             };
         });
     }

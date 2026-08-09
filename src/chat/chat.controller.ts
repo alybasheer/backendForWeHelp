@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -14,7 +14,7 @@ export class ChatController {
     ) { }
 
     private verifyTokenAndGetPayload(authHeader: string) {
-        if (!authHeader) throw new BadRequestException('Authorization header required');
+        if (!authHeader) throw new UnauthorizedException('Authorization header required');
         const token = authHeader.replace(/^Bearer\s+/i, '');
         const payload: any = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'dev_secret_key' });
         return payload;
@@ -195,8 +195,6 @@ export class ChatController {
         try {
             const message = await this.chatService.saveMessage(senderId, body.receiverId, body.content);
 
-            console.log(`✅ Message saved: ${message._id}`);
-
             return {
                 success: true,
                 message: 'Message sent successfully',
@@ -211,7 +209,7 @@ export class ChatController {
             };
         } catch (error) {
             console.error('❌ Error saving message:', error);
-            throw new BadRequestException('Failed to send message: ' + error.message);
+            throw new BadRequestException('Failed to send message');
         }
     }
 
@@ -243,8 +241,11 @@ export class ChatController {
                 },
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
             console.error('❌ Error deleting message:', error);
-            throw new BadRequestException('Failed to delete message: ' + error.message);
+            throw new BadRequestException('Failed to delete message');
         }
     }
 
@@ -278,7 +279,7 @@ export class ChatController {
             };
         } catch (error) {
             console.error('❌ Error deleting conversation:', error);
-            throw new BadRequestException('Failed to delete conversation: ' + error.message);
+            throw new BadRequestException('Failed to delete conversation');
         }
     }
 }

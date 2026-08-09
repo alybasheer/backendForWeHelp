@@ -1,5 +1,9 @@
 {
-  "latestVersion": "1.0.2",
+  "latestVersion": "1.1.10",
+  "minRequiredVersion": "1.1.0",
   "apkUrl": "/app-release.apk",
-  "releaseNotes": "- Fixed: tracking card and View Map button never appeared after request accepted\n- Fixed: live volunteer location not updating for help seeker\n- Fixed: route not updating while volunteer drives\n- Fixed: traveled route line not showing"
+  "arm64Url": "/app-release-arm64.apk",
+  "v7Url": "/app-release-v7.apk",
+  "x86Url": "/app-release-x86_64.apk",
+  "releaseNotes": "- Fixed volunteer live tracking on the seeker home map: the map camera now follows the volunteer in real time and the travelled path renders/updates live\n- Socket listeners are now attached before the connection opens, so no tracking/SOS/chat event can be missed at startup\n- All real-time updates verified end-to-end (12/12 location events, single socket connection, no duplicates)"
 }

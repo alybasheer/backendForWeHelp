@@ -79,18 +79,30 @@ export class HelpRequestsController {
 
     @Post('sos')
     async createSos(@Req() req: any, @Body() dto: CreateSosRequestDto) {
-        const { request, nearbyOnlineVolunteers, notified } =
-            await this.helpRequestsService.createSosRequest(req.user.sub, dto);
+        const result = await this.helpRequestsService.createSosRequest(req.user.sub, dto);
 
         return {
             success: true,
-            message: `SOS sent to ${notified} active nearby volunteer(s)`,
+            message: result.alreadyActive
+                ? 'You already have an active SOS'
+                : `SOS sent to ${result.notified} active nearby volunteer(s)`,
             data: {
-                request,
-                nearbyOnlineVolunteerCount: nearbyOnlineVolunteers.length,
-                nearbyOnlineVolunteers,
-                notified,
+                request: result.request,
+                alreadyActive: result.alreadyActive,
+                notified: result.notified,
+                nearbyOnlineVolunteers: result.nearbyOnlineVolunteers,
             },
+        };
+    }
+
+    @Post('sos/cancel')
+    async cancelSos(@Req() req: any) {
+        const request = await this.helpRequestsService.cancelSos(req.user.sub);
+
+        return {
+            success: true,
+            message: 'SOS cancelled',
+            data: { request },
         };
     }
 

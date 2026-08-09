@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,10 +15,17 @@ export class FirebaseService implements OnModuleInit {
 
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     if (serviceAccountJson) {
-      const credential = admin.credential.cert(JSON.parse(serviceAccountJson));
-      this.firebaseApp = admin.initializeApp({ credential });
-      console.log('Firebase Admin SDK initialized from FIREBASE_SERVICE_ACCOUNT_JSON');
-      return;
+      try {
+        const credential = admin.credential.cert(JSON.parse(serviceAccountJson));
+        this.firebaseApp = admin.initializeApp({ credential });
+        console.log('Firebase Admin SDK initialized from FIREBASE_SERVICE_ACCOUNT_JSON');
+        return;
+      } catch (error) {
+        console.error(
+          'Firebase: FIREBASE_SERVICE_ACCOUNT_JSON is malformed, falling back to serviceAccountKey.json/applicationDefault:',
+          (error as Error).message,
+        );
+      }
     }
 
     const serviceAccountPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
@@ -38,15 +45,15 @@ export class FirebaseService implements OnModuleInit {
 
   async verifyGoogleToken(idToken: string): Promise<admin.auth.DecodedIdToken> {
     if (!this.firebaseApp) {
-      throw new Error(
-        'Firebase is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON or add serviceAccountKey.json to project root.',
+      throw new UnauthorizedException(
+        'Google sign-in is temporarily unavailable',
       );
     }
     try {
       const decoded = await this.firebaseApp.auth().verifyIdToken(idToken);
       return decoded;
-    } catch (error) {
-      throw new Error(`Invalid Google ID token: ${error.message}`);
+    } catch {
+      throw new UnauthorizedException('Invalid Google sign-in token');
     }
   }
 }
