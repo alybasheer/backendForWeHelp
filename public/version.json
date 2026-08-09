@@ -1,9 +1,9 @@
 {
-    "latestVersion":  "1.1.12",
+    "latestVersion":  "1.1.13",
     "minRequiredVersion":  "1.1.0",
     "apkUrl":  "/app-release.apk",
     "arm64Url":  "/app-release-arm64.apk",
     "v7Url":  "/app-release-v7.apk",
     "x86Url":  "/app-release-x86_64.apk",
-    "releaseNotes":  "- Fixed \u0027Session expired\u0027 error showing on wrong credentials (now shows \u0027Invalid email or password\u0027)\\n- Live tracking: marker snaps to OSRM road geometry, follows turns\\n- Camera follows volunteer with distance-aware zoom\\n- Grey travelled path grows along route\\n- Silent redirect on stale token at app startup"
+    "releaseNotes":  "- FIXED: \u0027Session expired\u0027 error on requestee login (post-login session wipe race condition)\\n- Live tracking: marker snaps to OSRM road geometry\\n- Camera follows volunteer\\n- Shows \u0027Invalid email or password\u0027 instead of \u0027Session expired\u0027 on wrong credentials"
 }
