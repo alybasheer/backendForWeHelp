@@ -5,5 +5,5 @@
     "arm64Url":  "/app-release-arm64.apk",
     "v7Url":  "/app-release-v7.apk",
     "x86Url":  "/app-release-x86_64.apk",
-    "releaseNotes":  "- Tracking map: red destination pin shows immediately at request location\\n- Map centers on request location (not Lahore)\\n- Fixed: \u0027Session expired\u0027 on requestee login\\n- Fixed: update loop (all APK variants now v1.1.13)\\n- Live tracking: marker snaps to OSRM road, camera follows volunteer"
+    "releaseNotes":  "- FIXED: Login whitespace trimming (passwords now trimmed)\\n- FIXED: Volunteer live request delivery (socket reconnect re-registers flow events)\\n- FIXED: Flow event replay buffer (events buffered during disconnect)\\n- Tracking map: red destination pin shows immediately at request location\\n- All APK variants now v1.1.13"
 }
