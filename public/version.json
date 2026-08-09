@@ -5,5 +5,5 @@
     "arm64Url":  "/app-release-arm64.apk",
     "v7Url":  "/app-release-v7.apk",
     "x86Url":  "/app-release-x86_64.apk",
-    "releaseNotes":  "- FIXED: \u0027Session expired\u0027 error on requestee login (post-login session wipe race condition)\\n- Live tracking: marker snaps to OSRM road geometry\\n- Camera follows volunteer\\n- Shows \u0027Invalid email or password\u0027 instead of \u0027Session expired\u0027 on wrong credentials"
+    "releaseNotes":  "- FIXED: Update loop — all APK variants now contain version 1.1.13\\n- FIXED: \u0027Session expired\u0027 error on requestee login (post-login API 401 handling)\\n- Live tracking: marker snaps to OSRM road geometry, follows turns\\n- Camera follows volunteer with distance-aware zoom\\n- Shows actual error messages instead of \u0027Session expired\u0027"
 }
