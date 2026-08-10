@@ -1,9 +1,9 @@
 {
-    "latestVersion":  "1.1.13",
+    "latestVersion":  "1.1.14",
     "minRequiredVersion":  "1.1.0",
     "apkUrl":  "/app-release.apk",
     "arm64Url":  "/app-release-arm64.apk",
     "v7Url":  "/app-release-v7.apk",
     "x86Url":  "/app-release-x86_64.apk",
-    "releaseNotes":  "- FIXED: Login whitespace trimming (passwords now trimmed)\\n- FIXED: Volunteer live request delivery (socket reconnect re-registers flow events)\\n- FIXED: Flow event replay buffer (events buffered during disconnect)\\n- Tracking map: red destination pin shows immediately at request location\\n- All APK variants now v1.1.13"
+    "releaseNotes":  "- FIXED: Admin 500 error on expired/invalid session token (now returns 401)\\n- FIXED: Admin CNIC document images now load with Authorization (CachedNetworkImage)\\n- FIXED: Logout always clears session first, remote sign-out is best-effort\\n- LIVE TRACKING: realtime volunteer_location events, moving marker, route, distance & ETA\\n- FIXED: setState crash and duplicate socket listeners on accept\\n- All APK variants now v1.1.14"
 }
