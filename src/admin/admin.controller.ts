@@ -12,8 +12,12 @@ export class AdminController {
     private verifyTokenAndGetPayload(authHeader: string) {
         if (!authHeader) throw new UnauthorizedException('Authorization header required');
         const token = authHeader.replace(/^Bearer\s+/i, '');
-        const payload: any = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'dev_secret_key' });
-        return payload;
+        try {
+            const payload: any = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'dev_secret_key' });
+            return payload;
+        } catch (error) {
+            throw new UnauthorizedException('Invalid or expired token');
+        }
     }
 
     private ensureAdmin(payload: any) {
